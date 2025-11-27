@@ -4,7 +4,7 @@ duplicates (incl UMI) are typically the result of over-amplification / too many 
 
 Handling time is roughly I/O time. It writes out the best total-quality read-pair from de exact-duplicated set.
 
-Latest version allows for input of just R1 and R2 where the UMI should be available in the fastq header (new format). R3 system is still supported as Wel.  
+Latest version allows for input of just R1 and R2 where the UMI should be available in the fastq header (new format). R3 system is still supported as well.  
 This R2 or R3 system is handled automatically if two or three Rx files are provided respectively.  
 
 # Example
