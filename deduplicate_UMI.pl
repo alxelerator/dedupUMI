@@ -44,8 +44,8 @@
 #              are in any way direct or indeirctly responsible for the direct or indirect damages caused by using this script. Use at own responsibility.
 #
 
-my $version     = "1.1";
-my $versiondate = "2023-08-29";
+my $versionno     = "1.1b";
+my $versiondate = "2026-02-25";
 
 # Version history
 #       1.1b     25-02-2026  Verbosity printing to console bit organised
@@ -64,7 +64,7 @@ use POSIX qw/strftime/;
 use Data::Dumper;
 
 #handle cmd line options
-my ( $input_fastq1, $input_fastq2, $input_fastq3, $output_fastq1, $output_fastq2, $output_fastq3, $suppressSeq, $help );
+my ( $input_fastq1, $input_fastq2, $input_fastq3, $output_fastq1, $output_fastq2, $output_fastq3, $suppressSeq, $help, $version );
 
 GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'input-fastq2=s'   => \$input_fastq2,
@@ -73,31 +73,39 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'output-fastq2=s'  => \$output_fastq2,
             'output-fastq3=s'  => \$output_fastq3,
             'suppressSeq'      => \$suppressSeq,
-            'help'             => \$help);
+            'help'             => \$help,
+            'version'          => \$version);
 
-if ( defined($help) || ! defined($input_fastq1) || ! defined($input_fastq2) || ! defined($output_fastq1 )|| ! defined($output_fastq2) )
-   {
-       print "Version $version date $versiondate\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
-       print "\nUsage: fasta_selector.pl\n";
-       print "   --input-fastq1     <input fastq R1 file (plain or gz)>\n";
-       print "   --input-fastq2     <input fastq R2 file (plain or gz)>. In R3-system this is the UMI file.\n";
-       print "   --input-fastq3     optional if UMI is NOT in fastq header <input fastq R3 file (plain or gz)>\n";
-       print "   --output-fastq1    <output fastq R1 file (plain or gz)>\n";
-       print "   --output-fastq2    <output fastq R2 file (plain or gz)>\n";
-       print "   --output-fastq3    optional if UMI is NOT in fastq header <output fastq R3 file (plain or gz)>\n";
-       print "   --suppressSeq      Do NOT print sequence to STDOUT. Only intended printing for debug.\n";
-       print "   --help             Welll... eeeuuuhhh this help text\n";
-       print "\nIf you have problems reading/writing gzipped files, check if unix can use zcat command!\n\n";
-	   
-       if( ! defined($help) ) {
-           print "Version $version date $versiondate\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
-           print "Use: fasta_selector.pl --help for options\n";
-           print STDERR "One of the required arguments --input-fastq1, --input-fastq2, --input-fastq3 or --output-fastq1, --output-fastq2, --output-fastq3 is missing!\n" if !defined($help);
-           exit 1;
-	   }
-       exit;
-   }
+if ( defined($help) ) {
+   print "dedupUMI version $versionno date $versiondate\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
+   print "\nUsage: fasta_selector.pl\n";
+   print "   --input-fastq1     <input fastq R1 file (plain or gz)>\n";
+   print "   --input-fastq2     <input fastq R2 file (plain or gz)>. In R3-system this is the UMI file.\n";
+   print "   --input-fastq3     optional if UMI is NOT in fastq header <input fastq R3 file (plain or gz)>\n";
+   print "   --output-fastq1    <output fastq R1 file (plain or gz)>\n";
+   print "   --output-fastq2    <output fastq R2 file (plain or gz)>\n";
+   print "   --output-fastq3    optional if UMI is NOT in fastq header <output fastq R3 file (plain or gz)>\n";
+   print "   --suppressSeq      Do NOT print sequence to STDOUT. Only intended printing for debug.\n";
+   print "   --help             Welll... eeeuuuhhh this help text\n";
+   print "\nIf you have problems reading/writing gzipped files, check if unix can use zcat command!\n\n";
+   exit 0;
+}
+    
+if( defined($version) ) {
+   print "dedupUMI version $versionno date $versiondate\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
+   exit 0;
+}
 
+#error state
+if( ! defined($input_fastq1) || ! defined($input_fastq2) || ! defined($output_fastq1 )|| ! defined($output_fastq2) ) {
+    print "dedupUMI version $versionno date $versiondate\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
+    print STDERR "\nERROR: One of the required arguments --input-fastq1, --input-fastq2, --input-fastq3 or --output-fastq1, --output-fastq2, --output-fastq3 is missing!\n" if !defined($help);
+    print "Use: fasta_selector.pl --help for options\n";
+    exit 1;
+}
+
+
+# Lets go!
 
 # Check if we have UNI in the headers (new) or in a separate file (R3-system)
 my $umiheader;
