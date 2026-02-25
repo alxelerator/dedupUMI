@@ -44,10 +44,11 @@
 #              are in any way direct or indeirctly responsible for the direct or indirect damages caused by using this script. Use at own responsibility.
 #
 
-my $versionno     = "1.1b";
+my $versionno     = "1.2";
 my $versiondate   = "2026-02-25";
 
 # Version history
+#       1.2      25-02-2026  Added an option to write out the counts incoming and written to file (APPEND!)
 #       1.1b     25-02-2026  Verbosity printing to console bit organised
 #       1.1      29-08-2023  Add option to use UMI in fastq headers instead of R3-system.
 #       0.9=1.0  12-10-2022  Added quality check (Wouter + streamline Alexc)
@@ -64,7 +65,7 @@ use POSIX qw/strftime/;
 use Data::Dumper;
 
 #handle cmd line options
-my ( $input_fastq1, $input_fastq2, $input_fastq3, $output_fastq1, $output_fastq2, $output_fastq3, $suppressSeq, $help, $version );
+my ( $input_fastq1, $input_fastq2, $input_fastq3, $output_fastq1, $output_fastq2, $output_fastq3, $output_counts, $suppressSeq, $help, $version );
 
 GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'input-fastq2=s'   => \$input_fastq2,
@@ -72,6 +73,7 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'output-fastq1=s'  => \$output_fastq1,
             'output-fastq2=s'  => \$output_fastq2,
             'output-fastq3=s'  => \$output_fastq3,
+            'output-counts=s'  => \$output_counts,
             'suppressSeq'      => \$suppressSeq,
             'help'             => \$help,
             'version'          => \$version);
@@ -79,14 +81,15 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
 if ( defined($help) ) {
    print "dedupUMI version $versionno date $versiondate\nhttps://github.com/alxelerator/dedupUMI\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
    print "\nUsage: fasta_selector.pl\n";
-   print "   --input-fastq1     <input fastq R1 file (plain or gz)>\n";
-   print "   --input-fastq2     <input fastq R2 file (plain or gz)>. In R3-system this is the UMI file.\n";
-   print "   --input-fastq3     optional if UMI is NOT in fastq header <input fastq R3 file (plain or gz)>\n";
-   print "   --output-fastq1    <output fastq R1 file (plain or gz)>\n";
-   print "   --output-fastq2    <output fastq R2 file (plain or gz)>\n";
-   print "   --output-fastq3    optional if UMI is NOT in fastq header <output fastq R3 file (plain or gz)>\n";
-   print "   --suppressSeq      Do NOT print sequence to STDOUT. Only intended printing for debug.\n";
-   print "   --help             Welll... eeeuuuhhh this help text\n";
+   print "   --input-fastq1 <input fastq R1 file (plain or gz)>\n";
+   print "   --input-fastq2 <input fastq R2 file (plain or gz)>. In R3-system this is the UMI file.\n";
+   print "   --input-fastq3 [optional if UMI is NOT in fastq header <input fastq R3 file (plain or gz)]\n";
+   print "   --output-fastq1 <output fastq R1 file (plain or gz)>\n";
+   print "   --output-fastq2 <output fastq R2 file (plain or gz)>\n";
+   print "   --output-fastq3 [optional if UMI is NOT in fastq header <output fastq R3 file (plain or gz)]\n";
+   print "   --output_counts <filename> [optional tab-separated output file where we will APPEND counts written]"
+   print "   --suppressSeq   Do NOT print sequence to STDOUT. Only intended printing for debug.\n";
+   print "   --help          Welll... eeeuuuhhh this help text\n";
    print "\nIf you have problems reading/writing gzipped files, check if unix can use zcat command!\n\n";
    exit 0;
 }
@@ -104,8 +107,24 @@ if( ! defined($input_fastq1) || ! defined($input_fastq2) || ! defined($output_fa
     exit 1;
 }
 
+# create tabular output file if not exists otherwise append the data to it
+if( defined($output_counts) ) {
 
+    if (-e $output_counts) {
+        print "dedupUMI: Appending read count data to existing file!\n";
+        open ( $COUNTS, ">>$output_counts" ) || die "Output file error: $output_counts\n$!\n" ;
+    } else {
+        open ( $COUNTS, ">$output_counts" ) || die "Output file error: $output_counts\n$!\n" ;
+        print $COUNTS "Sample\tReads_in\tReads_out\n";
+    }
+}
+
+
+########################################################################################################
+#
 # Lets go!
+#
+########################################################################################################
 
 # Check if we have UNI in the headers (new) or in a separate file (R3-system)
 my $umiheader;
@@ -277,7 +296,7 @@ if( ! $umiheader )
     # write all unique sequences out to R1 R2 and R3 #
     ##################################################
 
-    $seqcount = 0;
+    my $seqcount_w = 0;
     foreach my $seqR123 (keys %uniqseq) {
 
         #time this if this takes too long => remove
@@ -306,10 +325,13 @@ if( ! $umiheader )
         print $OUT3 "+\n";
         print $OUT3 $quality[2]."\n";
 
-        $seqcount++;
+        $seqcount_w++;
     }
-    print "Dedupe: Written : $seqcount sequences\n";
+    print "Dedupe: Written : $seqcount_w sequences\n";
     print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
+    if( defined($output_counts) ) {
+        print $COUNTS "$input_fastq1\t$seqcount\t$seqcount_w\n"
+    }
 
     #end and close
     close ($INFQ1);
@@ -318,6 +340,7 @@ if( ! $umiheader )
     close ($OUT1);
     close ($OUT2);
     close ($OUT3);
+    close ($COUNTS);
 
 
 
@@ -448,9 +471,10 @@ if( ! $umiheader )
     print "DeDupe: Unique  : ". (keys %uniqseq) . " sequences\n";
 
     ##################################################
-    # write all unique sequences out to R1 R2 and R3 #
+    # write all unique sequences out to R1 and R2    #
     ##################################################
-    $seqcount = 0;
+
+    my $seqcount_w = 0;
     foreach my $seqR12 (keys %uniqseq) {
 
         #time this if this takes too long => remove
@@ -474,17 +498,21 @@ if( ! $umiheader )
         print $OUT2 "+\n";
         print $OUT2 $quality[1]."\n";
 
-        $seqcount++;
+        $seqcount_w++;
     }
 
-    print "Dedupe: Written : $seqcount sequences\n";
+    print "Dedupe: Written : $seqcount_w sequences\n";
     print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
+    if( defined($output_counts) ) {
+        print $COUNTS "$input_fastq1\t$seqcount\t$seqcount_w\n"
+    }
 
     #end and close
     close ($INFQ1);
     close ($INFQ2);
     close ($OUT1);
     close ($OUT2);
+    close ($COUNTS);
 }
 
 #end script
