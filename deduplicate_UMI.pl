@@ -87,7 +87,7 @@ if ( defined($help) ) {
    print "   --output-fastq1 <output fastq R1 file (plain or gz)>\n";
    print "   --output-fastq2 <output fastq R2 file (plain or gz)>\n";
    print "   --output-fastq3 [optional if UMI is NOT in fastq header <output fastq R3 file (plain or gz)]\n";
-   print "   --output_counts <filename> [optional tab-separated output file where we will APPEND counts written]"
+   print "   --output_counts <filename> [optional tab-separated output file where we will APPEND counts written]";
    print "   --suppressSeq   Do NOT print sequence to STDOUT. Only intended printing for debug.\n";
    print "   --help          Welll... eeeuuuhhh this help text\n";
    print "\nIf you have problems reading/writing gzipped files, check if unix can use zcat command!\n\n";
