@@ -108,9 +108,8 @@ if( ! defined($input_fastq1) || ! defined($input_fastq2) || ! defined($output_fa
 }
 
 # create tabular output file if not exists otherwise append the data to it
+my $COUNTS;
 if( defined($output_counts) ) {
-
-    my $COUNTS;
 
     if (-e $output_counts) {
         print "dedupUMI: Appending read count data to existing file!\n";
