@@ -48,6 +48,7 @@ my $version     = "1.1";
 my $versiondate = "2023-08-29";
 
 # Version history
+#       1.1b     25-02-2026  Verbosity printing to console bit organised
 #       1.1      29-08-2023  Add option to use UMI in fastq headers instead of R3-system.
 #       0.9=1.0  12-10-2022  Added quality check (Wouter + streamline Alexc)
 #       0.8      15-09-2022  first working concept 
@@ -61,10 +62,6 @@ use Getopt::Long;
 #use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
 use POSIX qw/strftime/;
 use Data::Dumper;
-
-print "Version $version date $versiondate by alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
-print "Started ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n";
-
 
 #handle cmd line options
 my ( $input_fastq1, $input_fastq2, $input_fastq3, $output_fastq1, $output_fastq2, $output_fastq3, $suppressSeq, $help );
@@ -80,19 +77,22 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
 
 if ( defined($help) || ! defined($input_fastq1) || ! defined($input_fastq2) || ! defined($output_fastq1 )|| ! defined($output_fastq2) )
    {
-       print "Usage: fasta_selector.pl\n";
+       print "Version $version date $versiondate\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
+       print "\nUsage: fasta_selector.pl\n";
        print "   --input-fastq1     <input fastq R1 file (plain or gz)>\n";
        print "   --input-fastq2     <input fastq R2 file (plain or gz)>. In R3-system this is the UMI file.\n";
        print "   --input-fastq3     optional if UMI is NOT in fastq header <input fastq R3 file (plain or gz)>\n";
        print "   --output-fastq1    <output fastq R1 file (plain or gz)>\n";
        print "   --output-fastq2    <output fastq R2 file (plain or gz)>\n";
        print "   --output-fastq3    optional if UMI is NOT in fastq header <output fastq R3 file (plain or gz)>\n";
-       print "   --suppressSeq      Do not print sequence at output to console\n";
+       print "   --suppressSeq      Do NOT print sequence to STDOUT. Only intended printing for debug.\n";
        print "   --help             Welll... eeeuuuhhh this help text\n";
        print "\nIf you have problems reading/writing gzipped files, check if unix can use zcat command!\n\n";
 	   
        if( ! defined($help) ) {
-		   print STDERR "One of the required arguments --input-fastq1, --input-fastq2, --input-fastq3 or --output-fastq1, --output-fastq2, --output-fastq3 is missing!\n" if !defined($help);
+           print "Version $version date $versiondate\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
+           print "Use: fasta_selector.pl --help for options\n";
+           print STDERR "One of the required arguments --input-fastq1, --input-fastq2, --input-fastq3 or --output-fastq1, --output-fastq2, --output-fastq3 is missing!\n" if !defined($help);
            exit 1;
 	   }
        exit;
@@ -105,17 +105,17 @@ if( defined($input_fastq3) ) {
     # R3-system processing (R1 R2 R3) where UMI is in R2
     if( ! defined($output_fastq3) ) {
         #output for R3 system is missing
-        print STDERR "  R3-system (R1 R2 R3) detected, but output file R3 is not defined! Define by using --output-fastq3\n" if !defined($help);
+        print STDERR "DeDupe ERROR: R3-system (R1 R2 R3) detected, but output file R3 is not defined! Define by using --output-fastq3\n" if !defined($help);
         exit 1;
     }
-    print "  R3-system (R1 R2 R3) UMI in-FILE processing detected!\n";
+    print "DeDupe: UMI sequences R3-system (R1 R2 R3) processing\n";
     $umiheader = 0;
 } else {
     # UMI in header
     # simple check if indeed UMI is present in the header
 
 
-    print "  R3 file not detected => assuming UMI present in R1 header!\n";
+    print "DeDupe: UMI sequences in the R1 R2 headers!\n";
     $umiheader = 1;
 }
 
@@ -262,9 +262,8 @@ if( ! $umiheader )
         $seqcount++;
     }
 
-    print "  Read    : $seqcount sequences\n";
-    print "  Unique  : ". (keys %uniqseq) . " sequences\n";
-    print "Writing ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n";
+    print "DeDupe: Read    : $seqcount sequences\n";
+    print "DeDupe: Unique  : ". (keys %uniqseq) . " sequences\n";
 
     ##################################################
     # write all unique sequences out to R1 R2 and R3 #
@@ -301,9 +300,8 @@ if( ! $umiheader )
 
         $seqcount++;
     }
-
-    print "  Written : $seqcount sequences\n";
-    print "Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n";
+    print "Dedupe: Written : $seqcount sequences\n";
+    print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
 
     #end and close
     close ($INFQ1);
@@ -438,9 +436,8 @@ if( ! $umiheader )
         $seqcount++;
     }
 
-    print "  Read    : $seqcount sequences\n";
-    print "  Unique  : ". (keys %uniqseq) . " sequences\n";
-    print "Writing ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n";
+    print "DeDupe: Read    : $seqcount sequences\n";
+    print "DeDupe: Unique  : ". (keys %uniqseq) . " sequences\n";
 
     ##################################################
     # write all unique sequences out to R1 R2 and R3 #
@@ -472,8 +469,8 @@ if( ! $umiheader )
         $seqcount++;
     }
 
-    print "  Written : $seqcount sequences\n";
-    print "Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n";
+    print "Dedupe: Written : $seqcount sequences\n";
+    print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
 
     #end and close
     close ($INFQ1);
