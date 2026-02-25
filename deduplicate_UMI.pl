@@ -45,7 +45,7 @@
 #
 
 my $versionno     = "1.1b";
-my $versiondate = "2026-02-25";
+my $versiondate   = "2026-02-25";
 
 # Version history
 #       1.1b     25-02-2026  Verbosity printing to console bit organised
@@ -77,7 +77,7 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'version'          => \$version);
 
 if ( defined($help) ) {
-   print "dedupUMI version $versionno date $versiondate\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
+   print "dedupUMI version $versionno date $versiondate\nhttps://github.com/alxelerator/dedupUMI\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
    print "\nUsage: fasta_selector.pl\n";
    print "   --input-fastq1     <input fastq R1 file (plain or gz)>\n";
    print "   --input-fastq2     <input fastq R2 file (plain or gz)>. In R3-system this is the UMI file.\n";
@@ -92,7 +92,7 @@ if ( defined($help) ) {
 }
     
 if( defined($version) ) {
-   print "dedupUMI version $versionno date $versiondate\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
+   print "dedupUMI version $versionno date $versiondate\nhttps://github.com/alxelerator/dedupUMI\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
    exit 0;
 }
 
