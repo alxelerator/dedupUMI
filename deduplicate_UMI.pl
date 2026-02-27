@@ -335,6 +335,7 @@ if( ! $umiheader )
     print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
     if( defined($output_counts) ) {
         print $COUNTS "$input_fastq1\t$reads_in\t$seqcount_w\n"
+        close ($COUNTS);
     }
 
     #end and close
@@ -344,7 +345,6 @@ if( ! $umiheader )
     close ($OUT1);
     close ($OUT2);
     close ($OUT3);
-    close ($COUNTS);
 
 
 
@@ -511,6 +511,7 @@ if( ! $umiheader )
     print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
     if( defined($output_counts) ) {
         print $COUNTS "$input_fastq1\t$reads_in\t$seqcount_w\n"
+        close ($COUNTS);
     }
 
     #end and close
@@ -518,7 +519,6 @@ if( ! $umiheader )
     close ($INFQ2);
     close ($OUT1);
     close ($OUT2);
-    close ($COUNTS);
 }
 
 #end script
