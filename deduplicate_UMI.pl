@@ -334,7 +334,7 @@ if( ! $umiheader )
     print "Dedupe: Written : $seqcount_w sequences\n";
     print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
     if( defined($output_counts) ) {
-        print $COUNTS "$input_fastq1\t$reads_in\t$seqcount_w\n"
+        print $COUNTS "$input_fastq1\t$reads_in\t$seqcount_w\n";
         close ($COUNTS);
     }
 
@@ -510,7 +510,7 @@ if( ! $umiheader )
     print "Dedupe: Written : $seqcount_w sequences\n";
     print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
     if( defined($output_counts) ) {
-        print $COUNTS "$input_fastq1\t$reads_in\t$seqcount_w\n"
+        print $COUNTS "$input_fastq1\t$reads_in\t$seqcount_w\n";
         close ($COUNTS);
     }
 
