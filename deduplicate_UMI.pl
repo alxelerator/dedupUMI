@@ -48,6 +48,7 @@ my $versionno     = "1.2";
 my $versiondate   = "2026-02-25";
 
 # Version history
+#       1.2b     27-02-2026  Fixed incoming reads counter.
 #       1.2      25-02-2026  Added an option to write out the counts incoming and written to file (APPEND!)
 #       1.1b     25-02-2026  Verbosity printing to console bit organised
 #       1.1      29-08-2023  Add option to use UMI in fastq headers instead of R3-system.
@@ -213,12 +214,14 @@ if( ! $umiheader )
     }
 
     #read lines and write lines based on tested headers
-    my $seqcount = 1;   # needed to treat seqs in blocks of 4 lines (circumvent start @ in qualscore)
+    my $reads_in  = 0;
+    my $stored    = 0;
     my $header;         # a clean header to start
     my $fq1line1;
     my %uniqseq = ();
 
     while ( <$INFQ1> ) {
+        $reads_in++;
         #read R1, R2 and R3 line1
         my $fq1line1 = $_;                  # linealready read
         my $fq2line1 = <$INFQ2>;
@@ -287,10 +290,10 @@ if( ! $umiheader )
         #Store the new sequence in the hash.
         $uniqseq{ "$fq1line2 $fq2line2 $fq3line2" } = \%contents;
         #Increment the sequence we are looking at.
-        $seqcount++;
+        $stored++;
     }
 
-    print "DeDupe: Read    : $seqcount sequences\n";
+    print "DeDupe: Read    : $reads_in sequences\n";
     print "DeDupe: Unique  : ". (keys %uniqseq) . " sequences\n";
 
     ##################################################
@@ -390,11 +393,13 @@ if( ! $umiheader )
     }
 
     #read lines and write lines based on tested headers
-    my $seqcount = 1;   # needed to treat seqs in blocks of 4 lines (circumvent start @ in qualscore)
+    my $reads_in  = 0;
+    my $stored    = 0;
     my $header;         # a clean header to start
     my %uniqseq = ();
 
     while ( <$INFQ1> ) {
+        $reads_in++;
         # read R1 and R2 line1
         my $fq1line1 = $_;                # line already read above
         my $fq2line1 = <$INFQ2>;
@@ -465,10 +470,10 @@ if( ! $umiheader )
         #Store the new sequence in the hash.
         $uniqseq{ "$fq1line2 $fq2line2 $umi" } = \%contents;
         #Increment the sequence we are looking at.
-        $seqcount++;
+        $stored++;
     }
 
-    print "DeDupe: Read    : $seqcount sequences\n";
+    print "DeDupe: Read    : $reads_in sequences\n";
     print "DeDupe: Unique  : ". (keys %uniqseq) . " sequences\n";
 
     ##################################################
