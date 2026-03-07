@@ -172,6 +172,7 @@ back to FASTQ output files.
 - It writes out the last sequences found of a duplicate set having the highest TOTAL qualityscore.
 - Input FASTQ files must follow the standard 4-line FASTQ format, starting at the first record.
 - Sequences in R1 R2 (and R3) should be in same order and NOT INTERLEAVED!!
+- If using the --noUMI option, please note that most likely you are filtering out true biological duplicates as well!
 
 
 ## Author
