@@ -88,7 +88,7 @@ use POSIX qw/strftime/;
 use Data::Dumper;
 
 #handle cmd line options
-my ( $input_fastq1, $input_fastq2, $input_fastq3, $output_fastq1, $output_fastq2, $output_fastq3, $output_counts, $verbose, $help, $version );
+my ( $input_fastq1, $input_fastq2, $input_fastq3, $output_fastq1, $output_fastq2, $output_fastq3, $output_counts, $noUMI, $verbose, $help, $version );
 
 GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'input-fastq2=s'   => \$input_fastq2,
@@ -97,6 +97,7 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'output-fastq2=s'  => \$output_fastq2,
             'output-fastq3=s'  => \$output_fastq3,
             'output-counts=s'  => \$output_counts,
+            'noUMI'            => \$noUMI,
             'verbose'          => \$verbose,
             'help'             => \$help,
             'version'          => \$version);
@@ -115,6 +116,7 @@ if ( defined($help) ) {
     print "      [--input-fastq3 <UMI.fastq[.gz]>] \\\n";
     print "      [--output-fastq3 <UMI_out.fastq[.gz]>] \\\n";
     print "      [--output_counts <counts.tab>] \\\n";
+    print "      [--noUMI] \\\n";
     print "      [--verbose] \n";
 
     print "\nRequired arguments:\n";
@@ -128,15 +130,18 @@ if ( defined($help) ) {
     print "                            extracted from the read header.\n";
     print "  --output-fastq3 <file>    Output FASTQ for R3 system UMIs\n";
     print "  --output_counts <file>    Append input/output read counts to tab file\n";
+    print "  --noUMI                   Two-file mode without UMI. Deduplicate on R1+R2 only\n";
     print "  --verbose                 Print sequences to STDOUT (debug output)\n";
     print "  --help                    Show this help message\n";
 
     print "\nNotes:\n";
-    print "  - UMI location (header or separate FASTQ file) is detected automatically\n";
+    print "  - UMI location (header or separate FASTQ file) is detected automatically unless --noUMI is used\n";
     print "  - If you have problems reading/writing gzipped files, ensure the 'zcat'\n";
     print "    command is available on your system.\n";
     print "  - On Unix systems gzip performance can often be improved by replacing\n";
     print "    gzip with 'pigz' (parallel gzip).\n";
+    print "  - If using --noUMI we just filter exact duplicates. This most likely filters to harsh since\n";
+    print "    exact duplicates can occurr in natural good quality datasets. Especially at high sequencing depths.\n";
 
     print "\nExamples:\n";
     print "  UMI in header:\n";
@@ -144,8 +149,10 @@ if ( defined($help) ) {
     print "                       --output-fastq1 s1_R1.dedup.fastq.gz --output-fastq2 s1_R2.dedup.fastq.gz\n";
     print "  R3 UMI system:\n";
     print "    deduplicate_UMI.pl --input-fastq1 s1_R1.fastq.gz --input-fastq2 s1_R2.fastq.gz --input-fastq3 s1_R3.fastq.gz \\\n";
-    print "                       --output-fastq1 s1_R1.dedup.fastq.gz --output-fastq2 s1_R2.dedup.fastq.gz --output-fastq3 s1_R3.dedup.fastq.gz\n\n";
-
+    print "                       --output-fastq1 s1_R1.dedup.fastq.gz --output-fastq2 s1_R2.dedup.fastq.gz --output-fastq3 s1_R3.dedup.fastq.gz\n";
+    print "  No UMI:\n";
+    print "    deduplicate_UMI.pl --input-fastq1 s1_R1.fastq.gz --input-fastq2 s1_R2.fastq.gz --noUMI \\\n";
+    print "                       --output-fastq1 s1_R1.dedup.fastq.gz --output-fastq2 s1_R2.dedup.fastq.gz\n\n";
     exit 0;
 }
     
@@ -159,6 +166,16 @@ if( ! defined($input_fastq1) || ! defined($input_fastq2) || ! defined($output_fa
     print STDERR "ERROR: One of the required arguments --input-fastq1, --input-fastq2, --input-fastq3 or --output-fastq1, --output-fastq2, --output-fastq3 is missing!\n" if !defined($help);
     print "DedupUMI version $versionno ($versiondate)\n";
     print "Use: deduplicate_UMI.pl --help for options\n";
+    exit 1;
+}
+
+# UMI compatibility chaeck of options
+if ( defined($noUMI) && defined($input_fastq3) ) {
+    print STDERR "ERROR: --noUMI cannot be combined with --input-fastq3\n";
+    exit 1;
+}
+if ( defined($noUMI) && defined($output_fastq3) ) {
+    print STDERR "ERROR: --noUMI cannot be combined with --output-fastq3\n";
     exit 1;
 }
 
@@ -182,17 +199,21 @@ if( defined($output_counts) ) {
 #
 ########################################################################################################
 
-# Check if we have UNI in the headers (new) or in a separate file (R3-system)
-my $umiheader;
-if( defined($input_fastq3) ) {
-    # R3-system processing (R1 R2 R3) where UMI is in R2
-    if( ! defined($output_fastq3) ) {
-        #output for R3 system is missing
+# Check if we have UMI in the headers (new), in a separate file (R3-system), or no UMI at all
+my $umiheader = 0;
+
+if ( defined($input_fastq3) ) {
+    # R3-system processing (R1 R2 R3) where UMI is in R3 file
+    if ( ! defined($output_fastq3) ) {
         print STDERR "DeDupe ERROR: R3-system (R1 R2 R3) detected, but output file R3 is not defined! Define by using --output-fastq3\n" if !defined($help);
         exit 1;
     }
     print "DeDupe: UMI sequences processing R3-system (R1 R2 R3)\n";
-    $umiheader = 0;
+
+} elsif ( defined($noUMI) ) {
+    # noUMI processing (R1 R2 only)
+    print "DeDupe: Processing noUMI mode (R1 R2 exact duplicate read-pairs)\n";
+
 } else {
     # UMI in header
     print "DeDupe: UMI sequences processing UMI in the R1 R2 headers!\n";
@@ -206,7 +227,7 @@ if( defined($input_fastq3) ) {
 my @infiles  = ($input_fastq1, $input_fastq2);
 my @outfiles = ($output_fastq1, $output_fastq2);
 
-if (!$umiheader) {
+if ( defined($input_fastq3) ) {
     push @infiles,  $input_fastq3;
     push @outfiles, $output_fastq3;
 }
@@ -277,6 +298,7 @@ while ( my $fq1line1 = readline($INFQ[0]) ) {
             $umi = $1;
         } else {
             print STDERR "  ERROR: UMI not found in fastq header or fastq header format has changed!?\n    Header: '$line1[0]'\n";
+            print STDERR "  Consider using the option --noUMI if your sequence library did not contain UMI sequences!\n";
             exit 1;
         }
     }
@@ -304,8 +326,10 @@ while ( my $fq1line1 = readline($INFQ[0]) ) {
     my $key;
     if ($umiheader) {
         $key = "$line2[0] $line2[1] $umi";
-    } else {
+    } elsif ( defined($input_fastq3) ) {
         $key = "$line2[0] $line2[1] $line2[2]";
+    } else {
+        $key = "$line2[0] $line2[1]";
     }
 
     # Check if current sequence is already stored. If new seq quality is better replace existing.
@@ -315,7 +339,7 @@ while ( my $fq1line1 = readline($INFQ[0]) ) {
         my $orgtotal = 0;
         my @orgquality = split(" ", $uniqseq{$key}{"qual"});
 
-        if ($umiheader) {
+        if ( $umiheader || !defined($input_fastq3) ) {
             my @fq1line4num = unpack("C*", $line4[0]);
             my @fq2line4num = unpack("C*", $line4[1]);
             $total += $_ for(@fq1line4num);
