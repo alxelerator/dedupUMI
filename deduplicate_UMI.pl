@@ -44,10 +44,11 @@
 #              are in any way direct or indeirctly responsible for the direct or indirect damages caused by using this script. Use at own responsibility.
 #
 
-my $versionno     = "1.2";
-my $versiondate   = "2026-02-25";
+my $versionno     = "1.3";
+my $versiondate   = "2026-03-05";
 
 # Version history
+#       1.3      05-03-2026  Improved file out of sync detection and removed duplicated code (file2 or file3 system)
 #       1.2b     27-02-2026  Fixed incoming reads counter.
 #       1.2      25-02-2026  Added an option to write out the counts incoming and written to file (APPEND!)
 #       1.1b     25-02-2026  Verbosity printing to console bit organised
@@ -80,7 +81,7 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'version'          => \$version);
 
 if ( defined($help) ) {
-   print "dedupUMI version $versionno date $versiondate\nhttps://github.com/alxelerator/dedupUMI\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
+   print "dedupUMI version $versionno date $versiondate\nhttps://github.com/alxelerator/dedupUMI\nBy a.bossers\@uu.nl / alex.bossers\@wur.nl\n";
    print "\nUsage: fasta_selector.pl\n";
    print "   --input-fastq1 <input fastq R1 file (plain or gz)>\n";
    print "   --input-fastq2 <input fastq R2 file (plain or gz)>. In R3-system this is the UMI file.\n";
@@ -96,7 +97,7 @@ if ( defined($help) ) {
 }
     
 if( defined($version) ) {
-   print "dedupUMI version $versionno date $versiondate\nhttps://github.com/alxelerator/dedupUMI\nBy alex.bossers\@wur.nl / a.bossers\@uu.nl\n";
+   print "dedupUMI version $versionno date $versiondate\nhttps://github.com/alxelerator/dedupUMI\nBy a.bossers\@uu.nl / alex.bossers\@wur.nl\n";
    exit 0;
 }
 
@@ -223,12 +224,15 @@ if( ! $umiheader )
     while ( <$INFQ1> ) {
         $reads_in++;
         #read R1, R2 and R3 line1
-        my $fq1line1 = $_;                  # linealready read
+        my $fq1line1 = $_;             # line1 of INFQ1 already read by the loop
         my $fq2line1 = <$INFQ2>;
         my $fq3line1 = <$INFQ3>;
         # Catch if line empty (format wrong or extra empty line ant the end) => exit
-        if ( $fq1line1 lt "0") { 
-            print STDERR "  WARNING from R1 read loop: Empty line detected in R1 file (extra line at the end?). Check the output.)\n";
+        if (!defined $fq2line1 || (!$umiheader && !defined $fq3line1)) {
+            die "ERROR: Paired FASTQ ended early / files out of sync (R2/R3 missing while R1 still has data)\n";
+        }
+        if (!defined $fq1line1 || $fq1line1 eq '') {
+            warn "WARNING: Empty header line in R1 (extra newline at EOF?)\n";
             last;
         }
 
@@ -264,7 +268,7 @@ if( ! $umiheader )
         #$contents{"totalqual"} =    ## not sure if this is more efficient then recalc only duplicates original.
         #                            ## leave as is for the moment. ToDo: Benchmark
 
-        #Check if the current sequence is already stored and if its quality is better replace existing.
+        #Check if the current sequence is already stored. If new seq quality is better replace the existing.
         if( exists( $uniqseq{ "$fq1line2 $fq2line2 $fq3line2" } ) ) {
             #Transform the quality sequence strings into numbers.
             my @fq1line4num = unpack("C*", $fq1line4);
