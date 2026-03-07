@@ -12,5 +12,5 @@ date
 		--output-fastq1 derep_fullR1.fq.gzip \
 		--output-fastq2 derep_fullR2.fq.gzip \
 		--output-fastq3 derep_fullR3.fq.gzip \
-		--suppressSeq 
+
 date

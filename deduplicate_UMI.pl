@@ -67,7 +67,7 @@ use POSIX qw/strftime/;
 use Data::Dumper;
 
 #handle cmd line options
-my ( $input_fastq1, $input_fastq2, $input_fastq3, $output_fastq1, $output_fastq2, $output_fastq3, $output_counts, $suppressSeq, $help, $version );
+my ( $input_fastq1, $input_fastq2, $input_fastq3, $output_fastq1, $output_fastq2, $output_fastq3, $output_counts, $verbose, $help, $version );
 
 GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'input-fastq2=s'   => \$input_fastq2,
@@ -76,7 +76,7 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'output-fastq2=s'  => \$output_fastq2,
             'output-fastq3=s'  => \$output_fastq3,
             'output-counts=s'  => \$output_counts,
-            'suppressSeq'      => \$suppressSeq,
+            'verbose'          => \$verbose,
             'help'             => \$help,
             'version'          => \$version);
 
@@ -94,7 +94,7 @@ if ( defined($help) ) {
     print "      [--input-fastq3 <UMI.fastq[.gz]>] \\\n";
     print "      [--output-fastq3 <UMI_out.fastq[.gz]>] \\\n";
     print "      [--output_counts <counts.tab>] \\\n";
-    print "      [--suppressSeq]\n";
+    print "      [--verbose] \n";
 
     print "\nRequired arguments:\n";
     print "  --input-fastq1 <file>     FASTQ read1 input file (plain or gz)\n";
