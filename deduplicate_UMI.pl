@@ -336,8 +336,8 @@ if( ! $umiheader )
     foreach my $seqR123 (keys %uniqseq) {
 
         #time this if this takes too long => remove
-        #using 1M sequences it saves less then 1 sec if I commnet this out => leave it in
-        print "  $seqR123\n" if !$suppressSeq;
+        #using 1M sequences it saves less then 1 sec if I comment this out => leave it in
+        print "  $seqR123\n" if $verbose;
 
         #split lines into R1 R2 and R3 again
         my @seq = split( " ", $seqR123 );
@@ -515,8 +515,8 @@ if( ! $umiheader )
     foreach my $seqR12 (keys %uniqseq) {
 
         #time this if this takes too long => remove
-        #using 1M sequences it saves less then 1 sec if I commnet this out => leave it in
-        print "  $seqR12\n" if !$suppressSeq;
+        #using 1M sequences it saves less then 1 sec if I comment this out => leave it in
+        print "  $seqR12\n" if $verbose;
 
         #split lines into R1 R2 and R3 again
         my @seq = split( " ", $seqR12 );
