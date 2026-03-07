@@ -81,19 +81,51 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
             'version'          => \$version);
 
 if ( defined($help) ) {
-   print "dedupUMI version $versionno date $versiondate\nhttps://github.com/alxelerator/dedupUMI\nBy a.bossers\@uu.nl / alex.bossers\@wur.nl\n";
-   print "\nUsage: deduplicate_UMI.pl\n";
-   print "   --input-fastq1 <fastq1file> : input fastq R1 file (plain or gz)>\n";
-   print "   --input-fastq2 <fastq2file> : input fastq R2 file (plain or gz)>. In R3-system this is the UMI file.\n";
-   print "   --input-fastq3 <fastq3file> [optional] : only required if using R3 system UMIs in sperate file instead of header (plain or gz)\n";
-   print "   --output-fastq1 <fastq1outfile.gz> : output fastq R1 file (plain or gz)>\n";
-   print "   --output-fastq2 <fastq2outfile.gz> : output fastq R2 file (plain or gz)>\n";
-   print "   --output-fastq3 <fastq3outfile.gz> [optional] : only required if using R3 system UMIs in sperate file instead of header (plain or gz)\n";
-   print "   --output_counts <tab_filename>     [optional] : tab-separated output file where we will write (APPEND) input/output read counts\n";
-   print "   --suppressSeq   Quiet mode. Do NOT print sequences to STDOUT. Printing is intended only for debugging/inspecting.\n";
-   print "   --help          Welll... this help text\n";
-   print "\nIf you have problems reading/writing gzipped files, check if unix can use the zcat command!\nFurthemore on unix you can typically speed-up gzip procssing by replacing it with pigz.\n\n";
-   exit 0;
+    print "DedupUMI version $versionno ($versiondate)\n";
+    print "https://github.com/alxelerator/dedupUMI\n";
+    print "By a.bossers\@uu.nl / alex.bossers\@wur.nl\n";
+
+    print "\nUsage:\n";
+    print "  deduplicate_UMI.pl \\\n";
+    print "      --input-fastq1 <R1.fastq[.gz]> \\\n";
+    print "      --input-fastq2 <R2.fastq[.gz]> \\\n";
+    print "      --output-fastq1 <R1_out.fastq[.gz]> \\\n";
+    print "      --output-fastq2 <R2_out.fastq[.gz]> \\\n";
+    print "      [--input-fastq3 <UMI.fastq[.gz]>] \\\n";
+    print "      [--output-fastq3 <UMI_out.fastq[.gz]>] \\\n";
+    print "      [--output_counts <counts.tab>] \\\n";
+    print "      [--suppressSeq]\n";
+
+    print "\nRequired arguments:\n";
+    print "  --input-fastq1 <file>     FASTQ read1 input file (plain or gz)\n";
+    print "  --input-fastq2 <file>     FASTQ read2 input file (plain or gz)\n";
+    print "  --output-fastq1 <file>    FASTQ read1 output file (plain or gz)\n";
+    print "  --output-fastq2 <file>    FASTQ read2 output file (plain or gz)\n";
+
+    print "\nOptional arguments:\n";
+    print "  --input-fastq3 <file>     UMI FASTQ file (R3 system). If omitted, UMI is\n";
+    print "                            extracted from the read header.\n";
+    print "  --output-fastq3 <file>    Output FASTQ for R3 system UMIs\n";
+    print "  --output_counts <file>    Append input/output read counts to tab file\n";
+    print "  --verbose                 Print sequences to STDOUT (debug output)\n";
+    print "  --help                    Show this help message\n";
+
+    print "\nNotes:\n";
+    print "  - UMI location (header or separate FASTQ file) is detected automatically\n";
+    print "  - If you have problems reading/writing gzipped files, ensure the 'zcat'\n";
+    print "    command is available on your system.\n";
+    print "  - On Unix systems gzip performance can often be improved by replacing\n";
+    print "    gzip with 'pigz' (parallel gzip).\n";
+
+    print "\nExamples:\n";
+    print "  UMI in header:\n";
+    print "    deduplicate_UMI.pl --input-fastq1 s1_R1.fastq.gz --input-fastq2 s1_R2.fastq.gz \\\n";
+    print "                       --output-fastq1 s1_R1.dedup.fastq.gz --output-fastq2 s1_R2.dedup.fastq.gz\n";
+    print "  R3 UMI system:\n";
+    print "    deduplicate_UMI.pl --input-fastq1 s1_R1.fastq.gz --input-fastq2 s1_R2.fastq.gz --input-fastq3 s1_R3.fastq.gz \\\n";
+    print "                       --output-fastq1 s1_R1.dedup.fastq.gz --output-fastq2 s1_R2.dedup.fastq.gz --output-fastq3 s1_R3.dedup.fastq.gz\n\n";
+
+    exit 0;
 }
     
 if( defined($version) ) {
