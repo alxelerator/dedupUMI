@@ -1,53 +1,74 @@
 #!/usr/bin/perl -w
 
-# Simple quick and dirty script that will deduplicate fastq sequences using UMI sequences
+# Deduplicate FASTQ sequences using UMIs
 #
-#  Latest version allows for input of just R1 and R2 where the UMI should be available in the fastq header (new format)
-#  This is handled automatically such if only two Rx files are provided.
+# DedupUMI removes exact duplicate FASTQ read pairs using UMI sequences without requiring alignment to a reference.
 #
-# Example fastq header plain vs UMI
-#      Plain : @A01685:89:HLHWFDRX2:1:1101:4200:1094 1:N:0:TTACGGCT+AAGGACCA     
-#              note: GAAAACTC+qual in R2 for R3-system
-#      UMI+  : @A01685:89:HLHWFDRX2:1:1101:4200:1094:GAAAACTC 1:N:0:TTACGGCT+AAGGACCA
+# Duplicates are identified using concatenation of R1, R2 and UMI sequences.
+# For duplicate molecules the read pair with the highest total base quality score is retained.
+#
+# ## Why deduplicate?
+#
+# Exact duplicates (incl UMI) are typically the result of over-amplification / too many amplification cycles in sequence library prepping 'PCR'.  
+#
+# ## Duplicate definition
+#
+# Reads are considered duplicates when the following combination is identical:
+# R1 sequence + R2 sequence + UMI
+# *For the older R3 system this becomes: R1 sequence + R2 sequence + R3 sequence*
+#
+# ## Memory usage
+#
+# Deduplication stores unique read keys in memory.
+# Memory usage scales with the number of unique molecules in the dataset.
+# In practice MAXIMUM memory usage is approximately:
+#  - 2 × size of the R1 sequence file
+#  - + optional R3 UMI file
+#
+# ## Input and output
+#
+# NEW system R1 R2 UMI in header:
+#  - Input: R1 and R2 FASTQ readset. UMI should be present in the header of at least R1!
+#  - Output: R1 and R2 filtered for EXACT duplicates based on concatenated seq of R1 R2 keeping highest TOTAL qual score.
+#
+# Older system R1 R2 R3 UMI in R2:
+#  - Input: R1 R2 and R3 FASTQ readset. For the best total quality to work the UMI should be present in R2!
+#  - Output: R1 R2 R3 filtered for EXACT duplicates based on concatenated seq of R1 R2 R3 keeping highest TOTAL qual score.
+#
+# ## Requirements
+#
+#  - Unix system with `zcat` to allow reading/writing of gzipped files
+#  - FASTQ files in fixed 4-line format having read-pairs in separate files (do not use interleaved files)
+#
+# Optional but recommended:
+#  - pigz (parallel gzip) for faster compression
 #
 #
-# In/Out:
-#   Older system R1 R2 R3 UMI in R2:
-#      Input: R1 R2 and R3 fastq readset. For the best total quality to work the UMI should be present in R2!
-#      Output: R1 R2 R3 filtered for EXACT duplicates based on concatenated seq of R1 R2 R3 keeping highest TOTAL qual score.
-#   NEW system R1 R2 UMI in header:
-#      Input: R1 and R2 fastq readset. UMI shuld be present in the header of at least R1!
-#      Output: R1 and R2 filtered for EXACT duplicates based on concatenated seq of R1 R2 keeping highest TOTAL qual score.
+# ## Important notes
 #
+# - It writes out the last sequences found of a duplicate set having the highest TOTAL qualityscore.
+# - Input FASTQ files must follow the standard 4-line FASTQ format, starting at the first record.
+# - Sequences in R1 R2 (and R3) should be in same order and NOT INTERLEAVED!!
 #
-# Requires 
-#   zcat available (on unix)) to allow reading/writing of gzipped files!
-#
-#
-# Note! 
-#   It writes out the last sequences found of a duplicate set having the highest TOTAL qualityscore.
-#   Input should be 4 lines convention starting at the FIRST line! 
-#   Sequences in R1 R2 (and R3) should be in same order!
-# 
-#
-# How it works: 
-#   It reads simulatenous R1 R2 (R3) per 4 line set (1 seq) and concatenates seq1 seq2 seq3 as 
-#   the hash key and stores qual values in the hash. Duplicates will overwrite each time the hash if total qualityscore is higher.
-#   This leaves a hash of unique sequences which is written out again into R1 R2 (R3).
-#
-#
+# ## Author
+# a.bossers@uu.nl // alex.bossers@wur.nl
 # @author: a.bossers@uu.nl // alex.bossers@wur.nl
 #
+# Latest version ad documentation: https://github.com/alxelerator/dedupUMI
 #
-# Disclaimer:  Script is povided AS IS under G-GPL3. We did our best to verify that the results are legitimate.
-#              However, the output could be erroneous so you should check your results. The authors nor their institutions/employers 
-#              are in any way direct or indeirctly responsible for the direct or indirect damages caused by using this script. Use at own responsibility.
+#
+# Disclaimer:  
+#         Script is provided AS IS under GPL-3.
+#         We did our best to verify that the results are legitimate. However, the output should be considered erroneous, so you should check your results.
+#         The authors nor their institutions/employers are in any way direct or indirect responsible for the direct or indirect damages caused by using this script.
+#         Use at your own responsibility.
 #
 
-my $versionno     = "1.3";
-my $versiondate   = "2026-03-05";
+my $versionno     = "1.4";
+my $versiondate   = "2026-03-07";
 
 # Version history
+#       1.4      07-03-2026  Integrated R2 and R3 system to remove all duplicated code.
 #       1.3      05-03-2026  Improved file out of sync detection and removed duplicated code (file2 or file3 system)
 #       1.2b     27-02-2026  Fixed incoming reads counter.
 #       1.2      25-02-2026  Added an option to write out the counts incoming and written to file (APPEND!)
@@ -129,14 +150,14 @@ if ( defined($help) ) {
 }
     
 if( defined($version) ) {
-   print "dedupUMI version $versionno date $versiondate\nhttps://github.com/alxelerator/dedupUMI\nBy a.bossers\@uu.nl / alex.bossers\@wur.nl\n";
+   print "DedupUMI version $versionno ($versiondate)\nhttps://github.com/alxelerator/dedupUMI\nBy a.bossers\@uu.nl / alex.bossers\@wur.nl\n";
    exit 0;
 }
 
 #error state
 if( ! defined($input_fastq1) || ! defined($input_fastq2) || ! defined($output_fastq1 )|| ! defined($output_fastq2) ) {
     print STDERR "ERROR: One of the required arguments --input-fastq1, --input-fastq2, --input-fastq3 or --output-fastq1, --output-fastq2, --output-fastq3 is missing!\n" if !defined($help);
-    print "dedupUMI version $versionno date $versiondate\n";
+    print "DedupUMI version $versionno ($versiondate)\n";
     print "Use: deduplicate_UMI.pl --help for options\n";
     exit 1;
 }
@@ -180,376 +201,192 @@ if( defined($input_fastq3) ) {
 
 
 
+# Unified processing for R3-system and UMI-in-header system
 
-#FixMe: deduplicate code or integrate. For simplicity/urgence the quick fix is duplicated code having changed UMI header stuff
+my @infiles  = ($input_fastq1, $input_fastq2);
+my @outfiles = ($output_fastq1, $output_fastq2);
 
+if (!$umiheader) {
+    push @infiles,  $input_fastq3;
+    push @outfiles, $output_fastq3;
+}
 
-if( ! $umiheader ) 
-{
-    # R3-system processing
-    # The original / initial version (can be deprecated if these files cease to exist)
-    my ($INFQ1,$INFQ2,$INFQ3, $OUT1,$OUT2,$OUT3);
+my $nfiles = scalar(@infiles);
+my (@INFQ, @OUT);
 
-    #open the INPUT files
-    if( substr($input_fastq1,-3) eq ".gz" || substr($input_fastq1,-5) eq ".gzip" ) {
-        #input gzipped
-        open( $INFQ1 , "zcat $input_fastq1 |") || die "Input file error: $input_fastq1\n$!\n" ;
+# open INPUT files
+for my $file (@infiles) {
+    my $fh;
+    if ( substr($file,-3) eq ".gz" || substr($file,-5) eq ".gzip" ) {
+        open($fh, "zcat $file |") || die "Input file error: $file\n$!\n";
     } else {
-        #regular non-gzipped input
-        open ( $INFQ1, $input_fastq1 ) || die "Input file error: $input_fastq1\n$!\n" ;
+        open($fh, $file) || die "Input file error: $file\n$!\n";
     }
+    push @INFQ, $fh;
+}
 
-    if( substr($input_fastq2,-3) eq ".gz" || substr($input_fastq2,-5) eq ".gzip" ) {
-        #input gzipped
-        open( $INFQ2 , "zcat $input_fastq2 |") || die "Input file error: $input_fastq2\n$!\n" ;
+# open OUTPUT files
+for my $file (@outfiles) {
+    my $fh;
+    if ( substr($file,-3) eq ".gz" || substr($file,-5) eq ".gzip" ) {
+        open($fh, "|-", "gzip >$file") || die "Output file error: $file\n$!\n";
     } else {
-        #regular non-gzipped input
-        open ( $INFQ2, $input_fastq2 ) || die "Input file error: $input_fastq2\n$!\n" ;
+        open($fh, ">$file") || die "Output file error: $file\n$!\n";
     }
+    push @OUT, $fh;
+}
 
-    if( substr($input_fastq3,-3) eq ".gz" || substr($input_fastq3,-5) eq ".gzip" ) {
-        #input gzipped
-        open( $INFQ3 , "zcat $input_fastq3 |") || die "Input file error: $input_fastq3\n$!\n" ;
-    } else {
-        #regular non-gzipped input
-        open ( $INFQ3, $input_fastq3 ) || die "Input file error: $input_fastq3\n$!\n" ;
-    }
+# read lines and store best duplicates
+my $reads_in = 0;
+my $stored   = 0;
+my %uniqseq  = ();
 
-    #open output handles
-    if( substr($output_fastq1,-3) eq ".gz" || substr($output_fastq1,-5) eq ".gzip" ) {
-        #input gzipped
-        #$OUT1 = new IO::Compress::Gzip("$output_fastq1") || die "Output file error: $output_fastq1\n$!\n";
-        open ( $OUT1, "|-", "gzip >$output_fastq1" ) || die "Output file error: $output_fastq1\n$!\n" ;
-    } else {
-        #regular non-gzipped input
-        open ( $OUT1, ">$output_fastq1" ) || die "Output file error: $output_fastq1\n$!\n" ;
-    }
+while ( my $fq1line1 = readline($INFQ[0]) ) {
+    $reads_in++;
 
-    if( substr($output_fastq2,-3) eq ".gz" || substr($output_fastq2,-5) eq ".gzip" ) {
-        #input gzipped
-        #$OUT2 = new IO::Compress::Gzip("$output_fastq2") || die "Output file error: $output_fastq2\n$!\n";
-        open ( $OUT2, "|-", "gzip >$output_fastq2" ) || die "Output file error: $output_fastq2\n$!\n" ;
-    } else {
-        #regular non-gzipped input
-        open ( $OUT2, ">$output_fastq2" ) || die "Output file error: $output_fastq2\n$!\n" ;
-    }
-
-    if( substr($output_fastq3,-3) eq ".gz" || substr($output_fastq3,-5) eq ".gzip" ) {
-        #input gzipped
-        #$OUT3 = new IO::Compress::Gzip("$output_fastq3") || die "Output file error: $output_fastq3\n$!\n";
-        open ( $OUT3, "|-", "gzip >$output_fastq3" ) || die "Output file error: $output_fastq3\n$!\n" ;
-    } else {
-        #regular non-gzipped input
-        open ( $OUT3, ">$output_fastq3" ) || die "Output file error: $output_fastq3\n$!\n" ;
-    }
-
-    #read lines and write lines based on tested headers
-    my $reads_in  = 0;
-    my $stored    = 0;
-    my $header;         # a clean header to start
-    my $fq1line1;
-    my %uniqseq = ();
-
-    while ( <$INFQ1> ) {
-        $reads_in++;
-        #read R1, R2 and R3 line1
-        my $fq1line1 = $_;             # line1 of INFQ1 already read by the loop
-        my $fq2line1 = <$INFQ2>;
-        my $fq3line1 = <$INFQ3>;
-        # Catch if line empty (format wrong or extra empty line ant the end) => exit
-        if (!defined $fq2line1 || (!$umiheader && !defined $fq3line1)) {
-            die "ERROR: Paired FASTQ ended early / files out of sync (R2/R3 missing while R1 still has data)\n";
+    # read header lines
+    my @line1 = ($fq1line1);
+    for my $i (1 .. $nfiles-1) {
+        my $line = readline($INFQ[$i]);
+        if (!defined $line) {
+            die "ERROR: Paired FASTQ ended early / files out of sync (file ".($i+1)." missing header while R1 still has data)\n";
         }
-        if (!defined $fq1line1 || $fq1line1 eq '') {
-            warn "WARNING: Empty header line in R1 (extra newline at EOF?)\n";
-            last;
-        }
-
-        chomp ($fq1line1);
-        chomp ($fq2line1);
-        chomp ($fq3line1);
-        
-        #read sequence line2
-        my $fq1line2 = <$INFQ1>;
-        my $fq2line2 = <$INFQ2>;
-        my $fq3line2 = <$INFQ3>;
-        chomp ($fq1line2);
-        chomp ($fq2line2);
-        chomp ($fq3line2);
-
-        #skip line 3 (+)
-        my $blackhole = <$INFQ1>;
-        $blackhole = <$INFQ2>;
-        $blackhole = <$INFQ3>;
-
-        #read line 4 quality
-        my $fq1line4 = <$INFQ1>;
-        my $fq2line4 = <$INFQ2>;
-        my $fq3line4 = <$INFQ3>;
-        chomp ($fq1line4);
-        chomp ($fq2line4);
-        chomp ($fq3line4);
-
-        #store seq header and quality
-        my %contents = ();
-        $contents{"head"} = $fq1line1 . "#alx#" . $fq2line1 . "#alx#" . $fq3line1;
-        $contents{"qual"} = $fq1line4 . " " . $fq2line4 . " " . $fq3line4;
-        #$contents{"totalqual"} =    ## not sure if this is more efficient then recalc only duplicates original.
-        #                            ## leave as is for the moment. ToDo: Benchmark
-
-        #Check if the current sequence is already stored. If new seq quality is better replace the existing.
-        if( exists( $uniqseq{ "$fq1line2 $fq2line2 $fq3line2" } ) ) {
-            #Transform the quality sequence strings into numbers.
-            my @fq1line4num = unpack("C*", $fq1line4);
-            my @fq3line4num = unpack("C*", $fq3line4);
-            #Sum the numbers.
-            my $total = 0;
-            $total += $_ for(@fq1line4num);
-            $total += $_ for(@fq3line4num);
-
-            #Same for the current best sequence.
-            my @orgquality = split( " ", $uniqseq{ "$fq1line2 $fq2line2 $fq3line2" }{ "qual" } );
-            my @orgfq1line4num = unpack("C*", $orgquality[0]);
-            my @orgfq3line4num = unpack("C*", $orgquality[2]);
-            my $orgtotal = 0;
-            $orgtotal += $_ for(@orgfq1line4num);
-            $orgtotal += $_ for(@orgfq3line4num);
-
-            #Compare the totals. If the old total is higher, do not store the new one and skip to the next.
-            if ($total <= $orgtotal) {
-                next;
-            }
-        }
-        #Store the new sequence in the hash.
-        $uniqseq{ "$fq1line2 $fq2line2 $fq3line2" } = \%contents;
-        #Increment the sequence we are looking at.
-        $stored++;
+        push @line1, $line;
     }
 
-    print "DeDupe: Read    : $reads_in sequences\n";
-
-    ##################################################
-    # write all unique sequences out to R1 R2 and R3 #
-    ##################################################
-
-    my $seqcount_w = 0;
-    foreach my $seqR123 (keys %uniqseq) {
-
-        #time this if this takes too long => remove
-        #using 1M sequences it saves less then 1 sec if I comment this out => leave it in
-        print "  $seqR123\n" if $verbose;
-
-        #split lines into R1 R2 and R3 again
-        my @seq = split( " ", $seqR123 );
-        my @headers = split( "#alx#", $uniqseq{ $seqR123 }{ "head" } );
-        my @quality = split( " ", $uniqseq{ $seqR123 }{ "qual" } );
-        #print Dumper \@seq;
-        
-        #write lines to files
-        print $OUT1 $headers[0]."\n";
-        print $OUT1 $seq[0]."\n";
-        print $OUT1 "+\n";
-        print $OUT1 $quality[0]."\n";
-
-        print $OUT2 $headers[1]."\n";
-        print $OUT2 $seq[1]."\n";
-        print $OUT2 "+\n";
-        print $OUT2 $quality[1]."\n";
-
-        print $OUT3 $headers[2]."\n";
-        print $OUT3 $seq[2]."\n";
-        print $OUT3 "+\n";
-        print $OUT3 $quality[2]."\n";
-
-        $seqcount_w++;
-    }
-    print "Dedupe: Written : $seqcount_w sequences\n";
-    print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
-    if( defined($output_counts) ) {
-        print $COUNTS "$input_fastq1\t$reads_in\t$seqcount_w\n";
-        close ($COUNTS);
+    if (!defined $line1[0] || $line1[0] eq '') {
+        warn "WARNING: Empty header line in R1 (extra newline at EOF?)\n";
+        last;
     }
 
-    #end and close
-    close ($INFQ1);
-    close ($INFQ2);
-    close ($INFQ3);
-    close ($OUT1);
-    close ($OUT2);
-    close ($OUT3);
+    chomp @line1;
 
-
-
-} else {
-
-
-
-    # UMI in headers processing
-
-    my ($INFQ1,$INFQ2, $OUT1,$OUT2);
-
-    #open the INPUT files
-    if( substr($input_fastq1,-3) eq ".gz" || substr($input_fastq1,-5) eq ".gzip" ) {
-        #input gzipped
-        open( $INFQ1 , "zcat $input_fastq1 |") || die "Input file error: $input_fastq1\n$!\n" ;
-    } else {
-        #regular non-gzipped input
-        open ( $INFQ1, $input_fastq1 ) || die "Input file error: $input_fastq1\n$!\n" ;
+    # read sequence lines
+    my @line2;
+    for my $i (0 .. $nfiles-1) {
+        my $line = readline($INFQ[$i]);
+        die "ERROR: FASTQ ended early / missing sequence line in file ".($i+1)."\n" if !defined $line;
+        chomp $line;
+        push @line2, $line;
     }
 
-    if( substr($input_fastq2,-3) eq ".gz" || substr($input_fastq2,-5) eq ".gzip" ) {
-        #input gzipped
-        open( $INFQ2 , "zcat $input_fastq2 |") || die "Input file error: $input_fastq2\n$!\n" ;
-    } else {
-        #regular non-gzipped input
-        open ( $INFQ2, $input_fastq2 ) || die "Input file error: $input_fastq2\n$!\n" ;
-    }
-
-    #open output handles
-    if( substr($output_fastq1,-3) eq ".gz" || substr($output_fastq1,-5) eq ".gzip" ) {
-        #input gzipped
-        #$OUT1 = new IO::Compress::Gzip("$output_fastq1") || die "Output file error: $output_fastq1\n$!\n";
-        open ( $OUT1, "|-", "gzip >$output_fastq1" ) || die "Output file error: $output_fastq1\n$!\n" ;
-    } else {
-        #regular non-gzipped input
-        open ( $OUT1, ">$output_fastq1" ) || die "Output file error: $output_fastq1\n$!\n" ;
-    }
-
-    if( substr($output_fastq2,-3) eq ".gz" || substr($output_fastq2,-5) eq ".gzip" ) {
-        #input gzipped
-        #$OUT2 = new IO::Compress::Gzip("$output_fastq2") || die "Output file error: $output_fastq2\n$!\n";
-        open ( $OUT2, "|-", "gzip >$output_fastq2" ) || die "Output file error: $output_fastq2\n$!\n" ;
-    } else {
-        #regular non-gzipped input
-        open ( $OUT2, ">$output_fastq2" ) || die "Output file error: $output_fastq2\n$!\n" ;
-    }
-
-    #read lines and write lines based on tested headers
-    my $reads_in  = 0;
-    my $stored    = 0;
-    my $header;         # a clean header to start
-    my %uniqseq = ();
-
-    while ( <$INFQ1> ) {
-        $reads_in++;
-        # read R1 and R2 line1
-        my $fq1line1 = $_;                # line already read above
-        my $fq2line1 = <$INFQ2>;
-        # Catch if line empty (format wrong or extra empty line ant the end) => exit
-        if ( $fq1line1 lt "0") { 
-            print STDERR "  WARNING from R1 read loop: Empty line detected in R1 file (extra line at the end?). Check the output.)\n";
-            last;
-        }
-        chomp ($fq1line1);
-        chomp ($fq2line1);
-       
-        #read sequence line2
-        my $fq1line2 = <$INFQ1>;
-        my $fq2line2 = <$INFQ2>;
-        chomp ($fq1line2);
-        chomp ($fq2line2);
-
-        # get umi from header instead of file
-        # apparently the UMI can contain N :-)
-        my $umi;
-        if( $fq1line1 =~ /^@.+:[0-9]+:[0-9]+:([ATGCNatgcn]+) [0-9]+:.+/ ) {
+    # get umi from header if needed
+    my $umi;
+    if ($umiheader) {
+        if ( $line1[0] =~ /^@.+:[0-9]+:[0-9]+:([ATGCNatgcn]+) [0-9]+:.+/ ) {
             $umi = $1;
-        } else { 
-            print STDERR "  ERROR: UMI not found in fastq header or fastq header format has changed!?\n    Header: '$fq1line1'\n"; 
+        } else {
+            print STDERR "  ERROR: UMI not found in fastq header or fastq header format has changed!?\n    Header: '$line1[0]'\n";
             exit 1;
         }
- 
-        #skip line 3 (+)
-        my $blackhole = <$INFQ1>;
-        $blackhole = <$INFQ2>;
+    }
 
-        #read line 4 quality
-        my $fq1line4 = <$INFQ1>;
-        my $fq2line4 = <$INFQ2>;
-        chomp ($fq1line4);
-        chomp ($fq2line4);
+    # skip plus lines
+    for my $i (0 .. $nfiles-1) {
+        my $line = readline($INFQ[$i]);
+        die "ERROR: FASTQ ended early / missing '+' line in file ".($i+1)."\n" if !defined $line;
+    }
 
-        #store seq header and quality
-        my %contents = ();
-        $contents{"head"} = $fq1line1 . "#alx#" . $fq2line1;
-        $contents{"qual"} = $fq1line4 . " " . $fq2line4;
-        #$contents{"totalqual"} =    ## not sure if this is more efficient then recalc only duplicates original.
-        #                            ## leave as is for the moment. ToDo: Benchmark
+    # read quality lines
+    my @line4;
+    for my $i (0 .. $nfiles-1) {
+        my $line = readline($INFQ[$i]);
+        die "ERROR: FASTQ ended early / missing quality line in file ".($i+1)."\n" if !defined $line;
+        chomp $line;
+        push @line4, $line;
+    }
 
-        #Check if the current sequence is already stored and if its quality is better replace existing.
-        if( exists( $uniqseq{ "$fq1line2 $fq2line2 $umi" } ) ) {
-            #Transform the quality sequence strings into numbers.
-            my @fq1line4num = unpack("C*", $fq1line4);
-            my @fq2line4num = unpack("C*", $fq2line4);
-            #Sum the numbers.
-            my $total = 0;
+    # store seq header and quality
+    my %contents = ();
+    $contents{"head"} = join("#alx#", @line1);
+    $contents{"qual"} = join(" ", @line4);
+
+    my $key;
+    if ($umiheader) {
+        $key = "$line2[0] $line2[1] $umi";
+    } else {
+        $key = "$line2[0] $line2[1] $line2[2]";
+    }
+
+    # Check if current sequence is already stored. If new seq quality is better replace existing.
+    if ( exists( $uniqseq{$key} ) ) {
+
+        my $total = 0;
+        my $orgtotal = 0;
+        my @orgquality = split(" ", $uniqseq{$key}{"qual"});
+
+        if ($umiheader) {
+            my @fq1line4num = unpack("C*", $line4[0]);
+            my @fq2line4num = unpack("C*", $line4[1]);
             $total += $_ for(@fq1line4num);
             $total += $_ for(@fq2line4num);
 
-            #Same for the current best sequence.
-            my @orgquality = split( " ", $uniqseq{ "$fq1line2 $fq2line2 $umi" }{ "qual" } );
             my @orgfq1line4num = unpack("C*", $orgquality[0]);
             my @orgfq2line4num = unpack("C*", $orgquality[1]);
-            my $orgtotal = 0;
             $orgtotal += $_ for(@orgfq1line4num);
             $orgtotal += $_ for(@orgfq2line4num);
+        } else {
+            my @fq1line4num = unpack("C*", $line4[0]);
+            my @fq3line4num = unpack("C*", $line4[2]);
+            $total += $_ for(@fq1line4num);
+            $total += $_ for(@fq3line4num);
 
-            #Compare the totals. If the old total is higher, do not store the new one and skip to the next.
-            if ($total <= $orgtotal) {
-                next;
-            }
+            my @orgfq1line4num = unpack("C*", $orgquality[0]);
+            my @orgfq3line4num = unpack("C*", $orgquality[2]);
+            $orgtotal += $_ for(@orgfq1line4num);
+            $orgtotal += $_ for(@orgfq3line4num);
         }
-        #Store the new sequence in the hash.
-        $uniqseq{ "$fq1line2 $fq2line2 $umi" } = \%contents;
-        #Increment the sequence we are looking at.
-        $stored++;
+
+        if ($total <= $orgtotal) {
+            next;
+        }
     }
 
-    print "DeDupe: Read    : $reads_in sequences\n";
-
-    ##################################################
-    # write all unique sequences out to R1 and R2    #
-    ##################################################
-
-    my $seqcount_w = 0;
-    foreach my $seqR12 (keys %uniqseq) {
-
-        #time this if this takes too long => remove
-        #using 1M sequences it saves less then 1 sec if I comment this out => leave it in
-        print "  $seqR12\n" if $verbose;
-
-        #split lines into R1 R2 and R3 again
-        my @seq = split( " ", $seqR12 );
-        my @headers = split( "#alx#", $uniqseq{ $seqR12 }{ "head" } );
-        my @quality = split( " ", $uniqseq{ $seqR12 }{ "qual" } );
-        #print Dumper \@seq;
-        
-        #write lines to files
-        print $OUT1 $headers[0]."\n";
-        print $OUT1 $seq[0]."\n";
-        print $OUT1 "+\n";
-        print $OUT1 $quality[0]."\n";
-
-        print $OUT2 $headers[1]."\n";
-        print $OUT2 $seq[1]."\n";
-        print $OUT2 "+\n";
-        print $OUT2 $quality[1]."\n";
-
-        $seqcount_w++;
-    }
-
-    print "Dedupe: Written : $seqcount_w sequences\n";
-    print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
-    if( defined($output_counts) ) {
-        print $COUNTS "$input_fastq1\t$reads_in\t$seqcount_w\n";
-        close ($COUNTS);
-    }
-
-    #end and close
-    close ($INFQ1);
-    close ($INFQ2);
-    close ($OUT1);
-    close ($OUT2);
+    # store the new sequence in the hash
+    $uniqseq{$key} = \%contents;
+    $stored++;
 }
+
+print "DeDupe: Read    : $reads_in sequences\n";
+
+##################################################
+# write all unique sequences out                 #
+##################################################
+
+my $seqcount_w = 0;
+foreach my $seqkey (keys %uniqseq) {
+
+    print "  $seqkey\n" if $verbose;
+
+    my @seq     = split(" ", $seqkey);
+    my @headers = split("#alx#", $uniqseq{$seqkey}{"head"});
+    my @quality = split(" ", $uniqseq{$seqkey}{"qual"});
+
+    for my $i (0 .. $nfiles-1) {
+        print {$OUT[$i]} $headers[$i]."\n";
+        print {$OUT[$i]} $seq[$i]."\n";
+        print {$OUT[$i]} "+\n";
+        print {$OUT[$i]} $quality[$i]."\n";
+    }
+
+    $seqcount_w++;
+}
+
+print "Dedupe: Written : $seqcount_w sequences\n";
+print "DeDupe: Finished ".(strftime "%m/%d/%Y %H:%M:%S", localtime)."\n\n";
+
+if( defined($output_counts) ) {
+    print $COUNTS "$input_fastq1\t$reads_in\t$seqcount_w\n";
+    close ($COUNTS);
+}
+
+# end and close
+for my $fh (@INFQ) {
+    close($fh);
+}
+for my $fh (@OUT) {
+    close($fh);
+}
+
 
 #end script
