@@ -48,36 +48,68 @@ Optional but recommended:
 - pigz (parallel gzip) for faster compression
 
 
+## Command line usage
+
+Run `deduplicateUMI.pl --help` to see the built-in help.
+
+```
+DedupUMI version 1.3 (2026-03-05)
+https://github.com/alxelerator/dedupUMI
+a.bossers@uu.nl / alex.bossers@wur.nl
+
+Usage:
+  deduplicate_UMI.pl \
+      --input-fastq1 <R1.fastq[.gz]> \
+      --input-fastq2 <R2.fastq[.gz]> \
+      --output-fastq1 <R1_out.fastq[.gz]> \
+      --output-fastq2 <R2_out.fastq[.gz]> \
+      [--input-fastq3 <UMI.fastq[.gz]>] \
+      [--output-fastq3 <UMI_out.fastq[.gz]>] \
+      [--output_counts <counts.tab>] \
+      [--noUMI] \
+      [--verbose]
+
+Required arguments:
+  --input-fastq1 <file>     FASTQ read1 input file (plain or gz)
+  --input-fastq2 <file>     FASTQ read2 input file (plain or gz)
+  --output-fastq1 <file>    FASTQ read1 output file (plain or gz)
+  --output-fastq2 <file>    FASTQ read2 output file (plain or gz)
+
+Optional arguments:
+  --input-fastq3 <file>     UMI FASTQ file (R3 system). If omitted, UMI is
+                            extracted from the read header.
+  --output-fastq3 <file>    Output FASTQ for R3 system UMIs
+  --output_counts <file>    Append input/output read counts to tab file
+  --noUMI                   Two-file mode without UMI. Deduplicate on R1+R2 only
+  --verbose                 Print sequences to STDOUT (debug output)
+  --help                    Show this help message
+```
+
 
 
 ## How it works
 
 DedupUMI is implemented as a lightweight Perl script using an in-memory
-hash table keyed by the concatenation of:
-
+hash table keyed by concatenation of:
 `R1_sequence + R2_sequence + UMI`
 
-This allows duplicate detection without alignment, sorting, or external
-tools.
-
+This allows duplicate detection without alignment, sorting, or external tools.
 Because the algorithm only performs sequential FASTQ reading combined
 with hash lookups, runtime is typically limited by disk I/O
 (decompression, compression and writing FASTQ files), not by the
 deduplication logic itself.
 
-For each read pair the script:
-
+For each read-pair the script:
 1. Extracts the UMI (from the FASTQ header or the R3 file)
 2. Constructs a (hash)key: R1_sequence + R2_sequence + UMI
 3. If the key is new → the sequence reads and its quality values are stored
 4. If the key already exists → the stored sequence reads and its quality scores are replaced only if the
    new readset has a higher total base quality score
 
-After all reads are processed the remaining unique reads are written from the hash table
-back to FASTQ output files.
+After all reads are processed the remaining unique reads are written from the hash table to FASTQ output files.
 
 
-### FASTQ header formats
+## Reference: FASTQ header formats
 
 New R1 header:
 - UMI+  : `@A01685:89:HLHWFDRX2:1:1101:4200:1094:GAAAACTC 1:N:0:TTACGGCT+AAGGACCA`
@@ -136,9 +168,6 @@ R3
 
 
 
-
-
-
 ## Performance
 
 
@@ -150,13 +179,9 @@ from each set of exact duplicates (keeping the best readset).
 
 ### Memory usage
 
-Deduplication stores unique read keys in memory.
-Memory usage scales with the number of unique molecules in the dataset.
-
+Deduplication stores unique reads as keys in memory. Memory usage scales with the number of unique molecules in the dataset.
 In practice MAXIMUM memory usage is approximately:
-
-- 2 × size of the R1 sequence file
-- optional R3 UMI file
+`~2 × size of the uncompressed R1 sequence file`
 
 
 ### Benchmark
@@ -164,7 +189,7 @@ In practice MAXIMUM memory usage is approximately:
 Example benchmark on a large dataset:
 
 Dataset:
-- 96 million paired-end reads (R1.gz ≈ 7.2 GB)
+- 96 million paired-end reads in R1 R2 R3 (R1.gz ≈ 7.2 GB)
 
 Results:
 - Read + deduplicate: ~9 minutes
