@@ -1,9 +1,8 @@
 # Deduplicate FASTQ sequences using UMIs
 
-DedupUMI removes exact duplicate FASTQ read pairs using UMI sequences without requiring alignment to a reference.
-
-Duplicates are identified using concatenation of R1, R2 and UMI sequences.
-For duplicate molecules the read pair with the highest total base quality score is retained.
+DedupUMI removes exact duplicate FASTQ read pairs using UMI sequences without requiring alignment to 
+a reference. Duplicates are identified using concatenation of R1, R2 and UMI sequences. For duplicate 
+molecules the read-pair with the highest total base quality score is retained.
 
 ## Why deduplicate?
 
@@ -13,19 +12,18 @@ Exact duplicates (incl UMI) are typically the result of over-amplification / too
 ## Duplicate definition
 
 Reads are considered duplicates when the following combination is identical:
-
-R1 sequence + R2 sequence + UMI
+ `R1 sequence + R2 sequence + UMI`
 
 *For the older R3 system this becomes: R1 sequence + R2 sequence + R3 sequence*
 
 
 ## Input and output
 
-NEW system R1 R2 UMI in header:
+<u>NEW system R1 R2 **UMI in header**:</u>
 - Input: R1 and R2 FASTQ readset. UMI should be present in the header of at least R1!
 - Output: R1 and R2 filtered for EXACT duplicates based on concatenated seq of R1 R2 keeping highest TOTAL qual score.
 
-Older system R1 R2 R3 UMI in R2:
+<u>Older system R1 R2 R3 **UMI in R2**:</u>
 - Input: R1 R2 and R3 FASTQ readset. For the best total quality to work the UMI should be present in R2!
 - Output: R1 R2 R3 filtered for EXACT duplicates based on concatenated seq of R1 R2 R3 keeping highest TOTAL qual score.
 
@@ -43,14 +41,12 @@ Older system R1 R2 R3 UMI in R2:
 - Unix system with `zcat` to allow reading/writing of gzipped files
 - FASTQ files in fixed 4-line format having read-pairs in separate files (do not use interleaved files)
 
-Optional but recommended:
-
-- pigz (parallel gzip) for faster compression
+Optional but recommended: `pigz` (parallel gzip) for faster compression
 
 
 ## Command line usage
 
-Run `deduplicateUMI.pl --help` to see the built-in help.
+Run `./deduplicateUMI.pl --help` to see the built-in help.
 
 ```
 DedupUMI version 1.3 (2026-03-05)
@@ -77,10 +73,10 @@ Required arguments:
 
 Optional arguments:
   --input-fastq3 <file>     UMI FASTQ file (R3 system). If omitted, UMI is
-                            extracted from the read header.
-  --output-fastq3 <file>    Output FASTQ for R3 system UMIs
-  --output_counts <file>    Append input/output read counts to tab file
-  --noUMI                   Two-file mode without UMI. Deduplicate on R1+R2 only
+                            extracted from the read header
+  --output-fastq3 <file>    Output FASTQ for R3 system UMIs. Required if input-fastq3 given
+  --output_counts <file>    Append input/output read counts to output tabular file
+  --noUMI                   Two-file mode without UMI. Deduplicate on R1+R2 only (see README)
   --verbose                 Print sequences to STDOUT (debug output)
   --help                    Show this help message
 ```

@@ -105,7 +105,7 @@ GetOptions ('input-fastq1=s'   => \$input_fastq1,
 if ( defined($help) ) {
     print "DedupUMI version $versionno ($versiondate)\n";
     print "https://github.com/alxelerator/dedupUMI\n";
-    print "By a.bossers\@uu.nl / alex.bossers\@wur.nl\n";
+    print "a.bossers\@uu.nl / alex.bossers\@wur.nl\n";
 
     print "\nUsage:\n";
     print "  deduplicate_UMI.pl \\\n";
@@ -127,10 +127,10 @@ if ( defined($help) ) {
 
     print "\nOptional arguments:\n";
     print "  --input-fastq3 <file>     UMI FASTQ file (R3 system). If omitted, UMI is\n";
-    print "                            extracted from the read header.\n";
-    print "  --output-fastq3 <file>    Output FASTQ for R3 system UMIs\n";
-    print "  --output_counts <file>    Append input/output read counts to tab file\n";
-    print "  --noUMI                   Two-file mode without UMI. Deduplicate on R1+R2 only\n";
+    print "                            extracted from the read header\n";
+    print "  --output-fastq3 <file>    Output FASTQ for R3 system UMIs (required if input-fastq3 given)\n";
+    print "  --output_counts <file>    Append input/output read counts to output tabular file\n";
+    print "  --noUMI                   Two-file mode without UMI. Deduplicate on R1+R2 only (see README)\n";
     print "  --verbose                 Print sequences to STDOUT (debug output)\n";
     print "  --help                    Show this help message\n";
 
