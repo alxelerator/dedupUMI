@@ -19,106 +19,6 @@ R1 sequence + R2 sequence + UMI
 *For the older R3 system this becomes: R1 sequence + R2 sequence + R3 sequence*
 
 
-## Performance
-
-Processing time is typically limited by disk I/O. The script writes the read pair with the highest summed base quality
-from each set of exact duplicates (keeping the best readset).
-
-Latest version allows for input of just R1 and R2 where the UMI should be available in the FASTQ header (new format). 
-The older R3 system is still supported as well.  
-This R2 or R3 system is handled automatically depending if two or three Rx files are provided respectively.
-
-
-### Memory usage
-
-Deduplication stores unique read keys in memory.
-Memory usage scales with the number of unique molecules in the dataset.
-
-In practice MAXIMUM memory usage is approximately:
-
-- 2 × size of the R1 sequence file
-- + optional R3 UMI file
-
-
-### Benchmark
-
-Example benchmark on a large dataset:
-
-Dataset:
-
-- 96 million paired-end reads (R1.gz ≈ 7.2 GB)
-
-Results:
-
-- Read + deduplicate: ~9 minutes
-- Compression + writing: ~14 minutes
-- Total runtime: ~23 minutes
-
-Processing speed is therefore largely limited by gzip compression and disk I/O.
-
-Using pigz (parallel gzip) like I did can improve compression speed on multi-core systems.
-
-Additional screenshots can be found in the performance/ folder of this repository.
-
-
-## FASTQ header formats
-
-New R1 header:
-- UMI+  : `@A01685:89:HLHWFDRX2:1:1101:4200:1094:GAAAACTC 1:N:0:TTACGGCT+AAGGACCA`
-- Note the UMI sequence **`GAAAACTC`**
-  
-Old R1 header:
-- Plain : `@A01685:89:HLHWFDRX2:1:1101:4200:1094 1:N:0:TTACGGCT+AAGGACCA`
-- Note: In an R1/R2/R3 system the UMI can technically be present in any read, but it is typically stored in R2.
-
-
-## Header examples
-
-For UMI **`TCTAAGGC`** and indexes `CTAACTCG+TCGTAGTC`  
-
-
-### UMI+ (new system 2021+):
-
-R1  
-
-`@A00379:673:HFL2HDRX2:2:1101:1488:1000:TCTAAGGC 1:N:0:CTAACTCG+TCGTAGTC`
-`CNCCAATGTGGAAGTGGATGCTGTAAAATTTAAACTAAAAACACATCTCACCCCAGATGCGTTAGGAGCAAAA.. ..ACTGTAATTGTATCGCCAAAAGCCGAAGAAGTGCTGGATTCT`  
-`+`  
-`F#FFFFFF:FFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFFFFF,F:FFFFFFFFFFF,FFFFFFF.. ..FFFFFFFFFFFFFF:FFFFFFF:FFFFFFF:FFFFF,FFFFF`
-
-
-R2  
-
-`@A00379:673:HFL2HDRX2:2:1101:1488:1000:TCTAAGGC 2:N:0:CTAACTCG+TCGTAGTC`  
-`GTAAGAAGTGTCGGTGTATTGGGTGGGTTCGTTCAGATTAAAAATCATTTTAGAATCCAGCACTTCTTCGG.. ..ACTGCAGGAGTTTGAATGTATCATTTTGCTCCTAACGCATCTGGG`  
-`+`  
-`,FFFFF,FFFFFFFFF,FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFF,FFFFFFFFFFF.. ..FFFFFFFFFF,:FFFFF:FFF:,F:FF::FFF:F,FF:FFFFF:F`
-
-
-### R3 system:
-
-R1  
-
-`@A00379:673:HFL2HDRX2:2:1101:1488:1000 1:N:0:CTAACTCG+TCGTAGTC`
-`CNCCAATGTGGAAGTGGATGCTGTAAAATTTAAACTAAAAACACATCTCACCCCAGATGCGTTAGGAGCAAAA.. ..ACTGTAATTGTATCGCCAAAAGCCGAAGAAGTGCTGGATTCT`  
-`+`  
-`F#FFFFFF:FFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFFFFF,F:FFFFFFFFFFF,FFFFFFF.. ..FFFFFFFFFFFFFF:FFFFFFF:FFFFFFF:FFFFF,FFFFF`
-
-R2 (UMI)  
-
-`@A00379:673:HFL2HDRX2:2:1101:1488:1000 2:N:0:CTAACTCG+TCGTAGTC`  
-**`TCTAAGGC`**  
-`+`  
-`FFFFFFFF`  
-
-R3  
-
-`@A00379:673:HFL2HDRX2:2:1101:1488:1000 3:N:0:CTAACTCG+TCGTAGTC`  
-`GTAAGAAGTGTCGGTGTATTGGGTGGGTTCGTTCAGATTAAAAATCATTTTAGAATCCAGCACTTCTTCGG.. ..ACTGCAGGAGTTTGAATGTATCATTTTGCTCCTAACGCATCTGGG`  
-`+`  
-`,FFFFF,FFFFFFFFF,FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFF,FFFFFFFFFFF.. ..FFFFFFFFFF,:FFFFF:FFF:,F:FF::FFF:F,FF:FFFFF:F`  
-
-
 ## Input and output
 
 NEW system R1 R2 UMI in header:
@@ -130,6 +30,14 @@ Older system R1 R2 R3 UMI in R2:
 - Output: R1 R2 R3 filtered for EXACT duplicates based on concatenated seq of R1 R2 R3 keeping highest TOTAL qual score.
 
 
+## Important notes
+
+- It writes out the last sequences found of a duplicate set having the highest TOTAL qualityscore.
+- Input FASTQ files must follow the standard 4-line FASTQ format, starting at the first record.
+- Sequences in R1 R2 (and R3) should be in same order and NOT INTERLEAVED!!
+- If using the --noUMI option, please note that most likely you are filtering out true biological duplicates as well!
+
+
 ## Requirements
 
 - Unix system with `zcat` to allow reading/writing of gzipped files
@@ -138,6 +46,8 @@ Older system R1 R2 R3 UMI in R2:
 Optional but recommended:
 
 - pigz (parallel gzip) for faster compression
+
+
 
 
 ## How it works
@@ -167,12 +77,103 @@ After all reads are processed the remaining unique reads are written from the ha
 back to FASTQ output files.
 
 
-## Important notes
+### FASTQ header formats
 
-- It writes out the last sequences found of a duplicate set having the highest TOTAL qualityscore.
-- Input FASTQ files must follow the standard 4-line FASTQ format, starting at the first record.
-- Sequences in R1 R2 (and R3) should be in same order and NOT INTERLEAVED!!
-- If using the --noUMI option, please note that most likely you are filtering out true biological duplicates as well!
+New R1 header:
+- UMI+  : `@A01685:89:HLHWFDRX2:1:1101:4200:1094:GAAAACTC 1:N:0:TTACGGCT+AAGGACCA`
+- Note the UMI sequence **`GAAAACTC`**
+  
+Old R1 header:
+- Plain : `@A01685:89:HLHWFDRX2:1:1101:4200:1094 1:N:0:TTACGGCT+AAGGACCA`
+- Note: In an R1/R2/R3 system the UMI can technically be present in any read, but it is typically stored in R2.
+
+
+### Header examples
+
+For UMI **`TCTAAGGC`** and indexes `CTAACTCG+TCGTAGTC`. The actual sequences were clipped only for demonstration purposes.  
+
+
+#### UMI+ (new system 2021+):
+
+R1  
+
+`@A00379:673:HFL2HDRX2:2:1101:1488:1000:TCTAAGGC 1:N:0:CTAACTCG+TCGTAGTC`
+`CNCCAATGTGGAAGTGGATGCTGTAAAATTTAAACTAAAAACACATCTCACCCCAGATGCGTTAGGAGCAAAACGAAGAAGTGCTGGATTCT`  
+`+`  
+`F#FFFFFF:FFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFFFFF,F:FFFFFFFFFFF,FFFFFFFFFFFFFF:FFFFF,FFFFF`
+
+
+R2  
+
+`@A00379:673:HFL2HDRX2:2:1101:1488:1000:TCTAAGGC 2:N:0:CTAACTCG+TCGTAGTC`  
+`GTAAGAAGTGTCGGTGTATTGGGTGGGTTCGTTCAGATTAAAAATCATTTTAGAATCCAGCACTTCTTCGGTTTGCTCCTAACGCATCTGGG`  
+`+`  
+`,FFFFF,FFFFFFFFF,FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFF,FFFFFFFFFFF:FF::FFF:F,FF:FFFFF:F`
+
+
+#### R3 system:
+
+R1  
+
+`@A00379:673:HFL2HDRX2:2:1101:1488:1000 1:N:0:CTAACTCG+TCGTAGTC`
+`CNCCAATGTGGAAGTGGATGCTGTAAAATTTAAACTAAAAACACATCTCACCCCAGATGCGTTAGGAGCAAAACGAAGAAGTGCTGGATTCT`  
+`+`  
+`F#FFFFFF:FFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFFFFF,F:FFFFFFFFFFF,FFFFFFFFFFFFFF:FFFFF,FFFFF`
+
+R2 (UMI)  
+
+`@A00379:673:HFL2HDRX2:2:1101:1488:1000 2:N:0:CTAACTCG+TCGTAGTC`  
+**`TCTAAGGC`**  
+`+`  
+`FFFFFFFF`  
+
+R3  
+
+`@A00379:673:HFL2HDRX2:2:1101:1488:1000 3:N:0:CTAACTCG+TCGTAGTC`  
+`GTAAGAAGTGTCGGTGTATTGGGTGGGTTCGTTCAGATTAAAAATCATTTTAGAATCCAGCACTTCTTCGGTTTGCTCCTAACGCATCTGGG`  
+`+`  
+`,FFFFF,FFFFFFFFF,FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFF,FFFFFFFFFFF:FF::FFF:F,FF:FFFFF:F`  
+
+
+
+
+
+
+## Performance
+
+
+### Processing speed
+
+Processing time is typically limited by disk I/O. The script writes the read pair with the highest summed base quality
+from each set of exact duplicates (keeping the best readset).
+
+
+### Memory usage
+
+Deduplication stores unique read keys in memory.
+Memory usage scales with the number of unique molecules in the dataset.
+
+In practice MAXIMUM memory usage is approximately:
+
+- 2 × size of the R1 sequence file
+- optional R3 UMI file
+
+
+### Benchmark
+
+Example benchmark on a large dataset:
+
+Dataset:
+- 96 million paired-end reads (R1.gz ≈ 7.2 GB)
+
+Results:
+- Read + deduplicate: ~9 minutes
+- Compression + writing: ~14 minutes
+- Total runtime: ~23 minutes
+
+Processing speed is therefore largely limited by gzip compression and disk I/O.
+Using pigz (parallel gzip) like I did can improve compression speed on multi-core systems.
+Additional screenshots can be found in the performance/ folder of this repository.
 
 
 ## Author
