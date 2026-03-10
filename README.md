@@ -6,8 +6,11 @@ molecules the read-pair with the highest total base quality score is retained.
 
 ## Why deduplicate?
 
-Exact duplicates (incl UMI) are typically the result of over-amplification / too many amplification cycles in sequence library prepping 'PCR'.  
+Exact duplicate reads (including identical UMI sequences) are typically the result of over-amplification during PCR in sequencing library preparation. 
+However, identical read sequences without the same UMI can occur naturally and may represent independent molecules that were sequenced multiple 
+times. These should generally **NOT** be removed. The probability of observing such biologically relevant duplicates increases with deeper sequencing.  
 
+Therefore duplicates should only be removed when both the read sequences **and** the UMI sequence are identical.
 
 ## Duplicate definition
 
