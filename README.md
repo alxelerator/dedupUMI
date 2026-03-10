@@ -19,11 +19,11 @@ Reads are considered duplicates when the following combination is identical:
 
 ## Input and output
 
-<u>NEW system R1 R2 **UMI in header**:</u>
+NEW system R1 R2 **UMI in header**:
 - Input: R1 and R2 FASTQ readset. UMI should be present in the header of at least R1!
 - Output: R1 and R2 filtered for EXACT duplicates based on concatenated seq of R1 R2 keeping highest TOTAL qual score.
 
-<u>Older system R1 R2 R3 **UMI in R2**:</u>
+Older system R1 R2 R3 **UMI in R2**:
 - Input: R1 R2 and R3 FASTQ readset. For the best total quality to work the UMI should be present in R2!
 - Output: R1 R2 R3 filtered for EXACT duplicates based on concatenated seq of R1 R2 R3 keeping highest TOTAL qual score.
 
@@ -184,8 +184,7 @@ In practice MAXIMUM memory usage is approximately:
 
 Example benchmark on a large dataset:
 
-Dataset:
-- 96 million paired-end reads in R1 R2 R3 (R1.gz ≈ 7.2 GB)
+Dataset: 96 million paired-end reads in R1 R2 R3 (R1.gz ≈ 7.2 GB)
 
 Results:
 - Read + deduplicate: ~9 minutes
