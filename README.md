@@ -41,23 +41,22 @@ Older system R1 R2 R3 **UMI in R2**:
 
 ## Requirements
 
-- Unix system with `zcat` to allow reading/writing of gzipped files
-- FASTQ files in fixed 4-line format having read-pairs in separate files (do not use interleaved files)
-
-Optional but recommended: `pigz` (parallel gzip) for faster compression
+- FASTQ files in fixed 4-line format having read-pairs in separate files (DO NOT use INTERLEAVED FASTQ files)!
+- Since the rust version 1.4r Gzip I/O is now handled natively via rust::flate2 (zlib-ng backend).
+  No external gzip/zcat/pigz dependency required anymore.
 
 
 ## Command line usage
 
-Run `./deduplicateUMI.pl --help` to see the built-in help.
+Run `./deduplicateUMI --help` to see the built-in help.
 
 ```
-DedupUMI version 1.3 (2026-03-05)
+DedupUMI version 1.4r (2026-03-05)
 https://github.com/alxelerator/dedupUMI
 a.bossers@uu.nl / alex.bossers@wur.nl
 
 Usage:
-  deduplicate_UMI.pl \
+  deduplicate_UMI \
       --input-fastq1 <R1.fastq[.gz]> \
       --input-fastq2 <R2.fastq[.gz]> \
       --output-fastq1 <R1_out.fastq[.gz]> \
@@ -88,9 +87,10 @@ Optional arguments:
 
 ## How it works
 
-DedupUMI is implemented as a lightweight Perl script using an in-memory
+DedupUMI was initially implemented as a lightweight Perl script using an in-memory
 hash table keyed by concatenation of:
 `R1_sequence + R2_sequence + UMI`
+This perl version has been replaced by a RUST rewrite from version 1.4r and up!  
 
 This allows duplicate detection without alignment, sorting, or external tools.
 Because the algorithm only performs sequential FASTQ reading combined
