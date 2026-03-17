@@ -48,7 +48,8 @@ Older system R1 R2 R3 **UMI in R2**:
 
 ## Command line usage
 
-Run `./deduplicateUMI --help` to see the built-in help.
+Run `./deduplicateUMI --help` to see the built-in help.  
+Do not forget to give deduplicate_UMI execution rights (for convenience): `chmod u+x deduplicate_UMI`
 
 ```
 DedupUMI version 1.4r (2026-03-05)
