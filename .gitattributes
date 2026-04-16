@@ -1,0 +1,4 @@
+# Treat all shell files as documentation/vendor so they don't count for language detection
+*.sh linguist-vendored
+*.rust172 linguist-detectable=true
+*.rust172 linguist-language=Rust
