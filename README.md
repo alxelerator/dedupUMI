@@ -6,7 +6,9 @@ molecules the read-pair with the highest **total base PHRED quality score** is r
 
 ## Why deduplicate?
 
-Exact duplicate reads (including identical UMI sequences) are typically the result of over-amplification during PCR in the sequencing library preparation. 
+Exact duplicate reads (including identical UMI sequences) are typically the result of over-amplification during PCR in the sequencing library preparation. For quantification 
+and some assembly-based approaches you want these overamplified sequences removed.  
+
 However, identical read sequences without the same UMI can occur naturally and may represent independent molecules that were sequenced multiple 
 times. These should generally **NOT** be removed. The probability of observing such biologically relevant duplicates increases with deeper sequencing. Typically the occurrence 
 of erroneous sequence duplicates is linked to input DNA concentrations and the number of amplification cycles used in the library prep.  
