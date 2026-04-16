@@ -1,6 +1,6 @@
 # Deduplicate FASTQ sequences using UMIs
 
-Dedupuplicate_UMI is a tool written in *rust* to **alignment-free** remove exact-duplicate FASTQ read-pairs using UMI sequences. 
+Dedupuplicate_UMI is a tool written in *rust* to remove **alignment-free** exact-duplicate FASTQ read-pairs using the UMI sequences-library approach. 
 Duplicates are identified using a concatenation of R1, R2 and UMI sequences approach. For duplicate 
 molecules the read-pair with the highest **total base PHRED quality score** is retained.
 
