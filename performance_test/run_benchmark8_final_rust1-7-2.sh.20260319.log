@@ -1,0 +1,33 @@
+
+
+Testing RUST172 implementation...
+
+DedupUMI version 1.7.2 (2026-03-16)
+https://github.com/alxelerator/dedupUMI
+By a.bossers@uu.nl / alex.bossers@wur.nl
+
+DeDupe: Started 03/20/2026 09:43:24
+DeDupe: UMI sequences processing UMI in the R1 R2 headers!
+DeDupe: Read 69902615 sequences
+DeDupe: StartWrite 03/20/2026 09:49:12
+DeDupe: Using 72 cores for compression
+Dedupe: Written 51220138 sequences
+DeDupe: Finished 03/20/2026 09:52:28
+
+
+
+Testing original perl 1.4 implementation...
+
+DedupUMI version 1.4time (2026-03-07)
+https://github.com/alxelerator/dedupUMI
+By a.bossers@uu.nl / alex.bossers@wur.nl
+
+Fri Mar 20 09:54:26 AM CET 2026
+DeDupe: UMI sequences processing UMI in the R1 R2 headers!
+DeDupe: Read    : 69902615 sequences
+DeDupe: StartWrite 03/20/2026 10:08:33
+Dedupe: Written : 51220138 sequences
+DeDupe: Finished 03/20/2026 10:13:24
+
+Fri Mar 20 10:14:51 AM CET 2026
+All done!

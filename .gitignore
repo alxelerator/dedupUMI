@@ -1,2 +1,6 @@
 testing/
 /target
+/source
+NGS-26-CA-*
+Cargo*
+deduplicate_UMI.pl

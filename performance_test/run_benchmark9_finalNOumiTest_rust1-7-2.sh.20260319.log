@@ -1,0 +1,18 @@
+
+
+Testing RUST172 implementation NO UMI use test...
+
+DedupUMI version 1.7.2 (2026-03-16)
+https://github.com/alxelerator/dedupUMI
+By a.bossers@uu.nl / alex.bossers@wur.nl
+
+DeDupe: Started 03/20/2026 10:20:54
+DeDupe: Processing noUMI mode (R1 R2 exact duplicate read-pairs)
+DeDupe: Read 69902615 sequences
+DeDupe: StartWrite 03/20/2026 10:26:08
+DeDupe: Using 72 cores for compression
+Dedupe: Written 50588277 sequences
+DeDupe: Finished 03/20/2026 10:28:57
+
+Fri Mar 20 10:30:53 AM CET 2026
+All done!

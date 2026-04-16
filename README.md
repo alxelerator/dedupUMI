@@ -1,16 +1,17 @@
 # Deduplicate FASTQ sequences using UMIs
 
-DedupUMI removes exact duplicate FASTQ read pairs using UMI sequences without requiring alignment to 
-a reference. Duplicates are identified using concatenation of R1, R2 and UMI sequences. For duplicate 
-molecules the read-pair with the highest total base quality score is retained.
+Dedupuplicate_UMI is a tool written in *rust* to **alignment-free** remove exact-duplicate FASTQ read-pairs using UMI sequences. 
+Duplicates are identified using a concatenation of R1, R2 and UMI sequences approach. For duplicate 
+molecules the read-pair with the highest **total base PHRED quality score** is retained.
 
 ## Why deduplicate?
 
-Exact duplicate reads (including identical UMI sequences) are typically the result of over-amplification during PCR in sequencing library preparation. 
+Exact duplicate reads (including identical UMI sequences) are typically the result of over-amplification during PCR in the sequencing library preparation. 
 However, identical read sequences without the same UMI can occur naturally and may represent independent molecules that were sequenced multiple 
-times. These should generally **NOT** be removed. The probability of observing such biologically relevant duplicates increases with deeper sequencing.  
+times. These should generally **NOT** be removed. The probability of observing such biologically relevant duplicates increases with deeper sequencing. Typically the occurrence 
+of erroneous sequence duplicates is linked to input DNA concentrations and the number of amplification cycles used in the library prep.  
 
-Therefore duplicates should only be removed when both the read sequences **and** the UMI sequence are identical.
+Exact duplicates should only be removed when both the read sequences **and** the UMI sequence are identical (amplification artefact).
 
 ## Duplicate definition
 
@@ -33,10 +34,16 @@ Older system R1 R2 R3 **UMI in R2**:
 
 ## Important notes
 
+- Binary rust build based on `x86_64-unknown-linux-musl` for maximum HPC compatibility.
 - It writes out the last sequences found of a duplicate set having the highest TOTAL qualityscore.
 - Input FASTQ files must follow the standard 4-line FASTQ format, starting at the first record.
-- Sequences in R1 R2 (and R3) should be in same order and NOT INTERLEAVED!!
-- If using the --noUMI option, please note that most likely you are filtering out true biological duplicates as well!
+  + Sequences in R1 R2 (and R3) should be in same order and NOT INTERLEAVED!!
+- UMI location (header or separate FASTQ file) is detected automatically unless `--noUMI` is used
+- If using `--noUMI` we just filter exact duplicates. This most likely filters too harsh since 
+  exact duplicates can occur in natural good quality datasets. Especially at high sequencing depths.
+- Gzip I/O is now handled natively via `rust::flate2` (zlib-ng backend).
+  + No external gzip/zcat/pigz dependency required anymore from version 1.4r and up.
+  + Gzip is the only parallelised part of the tool and its greedy for the number of cores. Limit the number of cores using `--max-cores` when needed.
 
 
 ## Requirements
@@ -52,8 +59,9 @@ Run `./deduplicateUMI --help` to see the built-in help.
 Do not forget to give deduplicate_UMI execution rights (for convenience): `chmod u+x deduplicate_UMI`
 
 ```
-DedupUMI version 1.4r (2026-03-05)
+DedupUMI version 1.7.3 (2026-04-16)
 https://github.com/alxelerator/dedupUMI
+Binary build for HPC compatibility against x86_64-unknown-linux-musl
 a.bossers@uu.nl / alex.bossers@wur.nl
 
 Usage:
@@ -66,7 +74,9 @@ Usage:
       [--output-fastq3 <UMI_out.fastq[.gz]>] \
       [--output_counts <counts.tab>] \
       [--noUMI] \
-      [--verbose]
+      [--max-cores] \
+      [--timing] \
+      [--verbose] 
 
 Required arguments:
   --input-fastq1 <file>     FASTQ read1 input file (plain or gz)
@@ -77,11 +87,33 @@ Required arguments:
 Optional arguments:
   --input-fastq3 <file>     UMI FASTQ file (R3 system). If omitted, UMI is
                             extracted from the read header
-  --output-fastq3 <file>    Output FASTQ for R3 system UMIs. Required if input-fastq3 given
+  --output-fastq3 <file>    Output FASTQ for R3 system UMIs (required if input-fastq3 given)
   --output_counts <file>    Append input/output read counts to output tabular file
   --noUMI                   Two-file mode without UMI. Deduplicate on R1+R2 only (see README)
+  --max-cores               By default gzip compression is greedy using all available cores.
+  --timing                  Print timing information to monitor the two major steps: read-hash and gz write.
   --verbose                 Print sequences to STDOUT (debug output)
+  --version                 Print version information
   --help                    Show this help message
+
+Notes:
+  - UMI location (header or separate FASTQ file) is detected automatically unless --noUMI is used
+  - If using --noUMI we just filter exact duplicates. This most likely filters too harsh since
+    exact duplicates can occur in natural good quality datasets. Especially at high sequencing depths.
+  - Gzip I/O is now handled natively via rust::flate2 (zlib-ng backend).
+    No external gzip/zcat/pigz dependency required anymore from version 1.4r and up.
+    Gzip is the only parallelised part and its greedy for the number of cores. Limit the number of cores using --max-cores.
+
+Examples:
+  UMI in header:
+    deduplicate_UMI --input-fastq1 s1_R1.fastq.gz --input-fastq2 s1_R2.fastq.gz \
+                       --output-fastq1 s1_R1.dedup.fastq.gz --output-fastq2 s1_R2.dedup.fastq.gz
+  R3 UMI system:
+    deduplicate_UMI --input-fastq1 s1_R1.fastq.gz --input-fastq2 s1_R2.fastq.gz --input-fastq3 s1_R3.fastq.gz \
+                       --output-fastq1 s1_R1.dedup.fastq.gz --output-fastq2 s1_R2.dedup.fastq.gz --output-fastq3 s1_R3.dedup.fastq.gz
+  No UMI:
+    deduplicate_UMI --input-fastq1 s1_R1.fastq.gz --input-fastq2 s1_R2.fastq.gz --noUMI \
+                       --output-fastq1 s1_R1.dedup.fastq.gz --output-fastq2 s1_R2.dedup.fastq.gz
 ```
 
 
@@ -188,16 +220,17 @@ In practice MAXIMUM memory usage is approximately:
 
 Example benchmark on a large dataset:
 
-Dataset: 96 million paired-end reads in R1 R2 R3 (R1.gz ≈ 7.2 GB)
+Dataset: 69 million paired-end reads (clusters) in R1 R2 R3 (R1.gz ≈ 6 GB)
+
+Server: PowerEdge R750, Intel Xeon Gold 6354 (72 threads), 256 GB memory running Ubuntu 24.04.3 LTS.
 
 Results:
-- Read + deduplicate: ~9 minutes
-- Compression + writing: ~14 minutes
-- Total runtime: ~23 minutes
+- Read + deduplicate: ~6 minutes
+- Compression + writing: ~5 minutes
+- Total runtime: ~11 minutes
 
-Processing speed is therefore largely limited by gzip compression and disk I/O.
-Using pigz (parallel gzip) like I did can improve compression speed on multi-core systems.
-Additional screenshots can be found in the performance/ folder of this repository.
+Processing speed is largely limited by gzip (de)compression and disk I/O.
+Details in the performance_test directory.
 
 
 ## Author
@@ -209,6 +242,6 @@ a.bossers@uu.nl // alex.bossers@wur.nl
 
 **Script is provided AS IS under GPL-3.**
 
-We did our best to verify that the results are legitimate. However, the output should be considered erroneous, so you should check your results.
-The authors nor their institutions/employers are in any way direct or indirect responsible for the direct or indirect damages caused by using this script.
-Use at your own responsibility.
+We did our best to verify that the results are legitimate. However, the output should be considered erroneous, so you should check your results!
+The authors, nor their institutions/employers, are in any way direct or indirect responsible for the direct or indirect damages caused by using this tool.
+Use it at your own responsibility.
