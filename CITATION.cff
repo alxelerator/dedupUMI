@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you find this software useful, please cite it as below."
+authors:
+- family-names: "Bossers"
+  given-names: "Alex"
+  orcid: "https://orcid.org/0000-0002-6586-717X"
+- family-names: "Lokhorst"
+  given-names: "Wouter"
+title: "dedupUMI"
+version: 1.7.4
+doi: 10.5281/zenodo.20412197
+date-released: 2026-04-16
+url: "https://github.com/alxelerator/dedupUMI"
